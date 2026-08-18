@@ -13,10 +13,10 @@ if (!defined('MEDAL_DB_DSN')) {
     define('MEDAL_DB_DSN', 'mysql:host=127.0.0.1;dbname=medal_db;charset=utf8mb4');
 }
 if (!defined('MEDAL_DB_USER')) {
-    define('MEDAL_DB_USER', 'root');
+    define('MEDAL_DB_USER', 'zein');
 }
 if (!defined('MEDAL_DB_PASS')) {
-    define('MEDAL_DB_PASS', '');
+    define('MEDAL_DB_PASS', 'P@ssw0rd123!');
 }
 
 function medal_pdo(): ?PDO

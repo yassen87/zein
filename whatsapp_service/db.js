@@ -9,8 +9,8 @@ let pool = null;
 
 function getDbConfig() {
     let host = '127.0.0.1';
-    let user = 'root';
-    let password = '';
+    let user = 'zein';
+    let password = 'P@ssw0rd123!';
     let database = 'medal_db';
     let port = 3306;
 
