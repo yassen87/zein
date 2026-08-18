@@ -29,7 +29,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Note: Constants cannot be redefined, so we might need a workaround or just try PDO manually
         try {
             $dsn = "mysql:host=$dbHost;dbname=$dbName;charset=utf8mb4";
-            $pdo = new PDO($dsn, $dbUser, $dbPass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+            $pdo = new PDO($dsn, $dbUser, $dbPass, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
+            ]);
             
             // 2. Run Schema
             medal_db_run_schema($pdo);
