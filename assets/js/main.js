@@ -61,7 +61,7 @@
                 if (isSel) {
                     currentVariantPrice = parseFloat(v.price) || 0;
                     var stockText = '';
-                    if (v.stock !== undefined) {
+                    if (v.stock !== undefined && parseInt(v.stock) > 0 && parseInt(v.stock) <= 5) {
                         stockText = ' (' + (document.documentElement.lang === 'ar' ? 'المتبقي: ' : 'Stock: ') + v.stock + ')';
                     }
                     if (selectedSizeLabel) selectedSizeLabel.textContent = labelStr + stockText;
@@ -71,7 +71,7 @@
                     if (inp.checked) {
                         currentVariantPrice = parseFloat(v.price) || 0;
                         var sText = '';
-                        if (v.stock !== undefined) {
+                        if (v.stock !== undefined && parseInt(v.stock) > 0 && parseInt(v.stock) <= 5) {
                             sText = ' (' + (document.documentElement.lang === 'ar' ? 'المتبقي: ' : 'Stock: ') + v.stock + ')';
                         }
                         if (selectedSizeLabel) selectedSizeLabel.textContent = labelStr + sText;

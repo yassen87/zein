@@ -961,7 +961,7 @@ function regenerateMessage() {
     lines.push('🔗 *للطلب والتفاصيل فوراً عبر موقعنا:*');
     lines.push(p.url);
     lines.push('');
-    lines.push('🚚 *متاح الشحن والتوصيل لجميع المحافظات والدفع عند الاستلام أو إلكترونياً!* ✨');
+    lines.push('🚚 *متاح الشحن والتوصيل السريع لجميع المحافظات!* ✨');
 
     var fullText = lines.join('\n');
     document.getElementById('finalMessageTextarea').value = fullText;

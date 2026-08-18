@@ -143,7 +143,7 @@ require __DIR__ . '/includes/header.php';
                     $qtyRequired = $qty * $p['quantity'];
                     if ($vid !== null && isset($stockMap[$vid])) {
                         $vRow = $stockMap[$vid];
-                        if ((int)$vRow['stock'] < $qtyRequired) {
+                        if ((int)$vRow['stock'] >= 0 && (int)$vRow['stock'] < $qtyRequired) {
                             $vLabel = current_lang() === 'ar' ? $vRow['label_ar'] : $vRow['label_en'];
                             $errors[] = "الكمية المطلوبة من العرض ({$p['name']} - {$vLabel}) غير متوفرة بالمخزون.";
                             continue;
@@ -174,7 +174,7 @@ require __DIR__ . '/includes/header.php';
 
                     if ($vid !== null && isset($stockMap[$vid])) {
                         $vRow = $stockMap[$vid];
-                        if ((int)$vRow['stock'] < $qty) {
+                        if ((int)$vRow['stock'] >= 0 && (int)$vRow['stock'] < $qty) {
                             $vLabel = current_lang() === 'ar' ? $vRow['label_ar'] : $vRow['label_en'];
                             $errors[] = "الكمية المطلوبة من ({$p['name']} - {$vLabel}) غير متوفرة. المتاح حالياً: {$vRow['stock']}";
                             continue;
@@ -299,7 +299,7 @@ require __DIR__ . '/includes/header.php';
                     // Deduct stock — runs AFTER commit so failure never blocks the order
                     try {
                         $stockSt = $pdo->prepare(
-                            'UPDATE product_variants SET stock = GREATEST(0, stock - ?) WHERE id = ?'
+                            'UPDATE product_variants SET stock = GREATEST(0, stock - ?) WHERE id = ? AND stock >= 0'
                         );
                         foreach ($orderLines as $ln) {
                             if (!empty($ln['variant_id'])) {

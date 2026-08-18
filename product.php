@@ -341,12 +341,14 @@ require __DIR__ . '/includes/header.php';
                                 break;
                             }
                         }
+                        $isInitInStock = ($initialStock < 0 || $initialStock > 5);
+                        $isInitLowStock = ($initialStock > 0 && $initialStock <= 5);
                         ?>
                         <div class="pdp-variants">
                             <span class="pdp-variants__label">
                                 <?= current_lang() === 'ar' ? 'الحجم' : 'Size' ?>
-                                <span class="pdp-badge pdp-badge--stock <?= $initialStock > 5 ? 'in-stock' : ($initialStock > 0 ? 'low-stock' : 'out-of-stock') ?>" id="stock-display">
-                                    <?= $initialStock > 5 ? (current_lang() === 'ar' ? 'متوفر' : 'In Stock') : ($initialStock > 0 ? (current_lang() === 'ar' ? 'المتبقي: ' . $initialStock : 'Only ' . $initialStock . ' left') : (current_lang() === 'ar' ? 'غير متوفر' : 'Out of Stock')) ?>
+                                <span class="pdp-badge pdp-badge--stock <?= $isInitInStock ? 'in-stock' : ($isInitLowStock ? 'low-stock' : 'out-of-stock') ?>" id="stock-display">
+                                    <?= $isInitInStock ? (current_lang() === 'ar' ? 'متوفر' : 'In Stock') : ($isInitLowStock ? (current_lang() === 'ar' ? 'المتبقي: ' . $initialStock : 'Only ' . $initialStock . ' left') : (current_lang() === 'ar' ? 'غير متوفر' : 'Out of Stock')) ?>
                                 </span>
                             </span>
                             <div class="pdp-variants__grid">
@@ -355,9 +357,10 @@ require __DIR__ . '/includes/header.php';
                                      $isSel = $v['id'] === $selectedVariantId;
                                      $label = current_lang() === 'ar' ? $v['label_ar'] : $v['label_en'];
                                      $vStock = (int)$v['stock'];
+                                     $isOutOfStock = ($vStock === 0);
                                      ?>
                                      <button type="button"
-                                              class="pdp-variant-btn <?= $isSel ? 'active' : '' ?> <?= $vStock <= 0 ? 'out-of-stock' : '' ?>"
+                                              class="pdp-variant-btn <?= $isSel ? 'active' : '' ?> <?= $isOutOfStock ? 'out-of-stock' : '' ?>"
                                               onclick="selectVariant(<?= (int)$v['id'] ?>, <?= (float)$v['price'] ?>, '<?= esc($label) ?>', <?= $vStock ?>)"
                                               data-variant-id="<?= (int)$v['id'] ?>">
                                          <?= esc($label) ?>
@@ -698,7 +701,7 @@ require __DIR__ . '/includes/header.php';
         const stockDisplay = document.getElementById('stock-display');
         if (stockDisplay) {
             stockDisplay.classList.remove('in-stock', 'low-stock', 'out-of-stock');
-            if (stock > 5) {
+            if (stock < 0 || stock > 5) {
                 stockDisplay.innerText = '<?= esc(current_lang() === 'ar' ? 'متوفر' : 'In Stock') ?>';
                 stockDisplay.classList.add('in-stock');
             } else if (stock > 0) {
