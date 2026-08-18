@@ -68,8 +68,155 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     admin_verify_csrf();
     $action = $_POST['form_action'] ?? '';
 
-    // A. Import SQL File
-    if ($action === 'import_sql') {
+function run_sql_import(PDO $pdo, string $fileContent): array {
+    $pdo->exec('SET FOREIGN_KEY_CHECKS=0;');
+    $pdo->exec('SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";');
+
+    // Pre-create known optional columns on products table
+    try {
+        $pdo->exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS ai_profile_ar TEXT NULL");
+        $pdo->exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS ai_profile_en TEXT NULL");
+        $pdo->exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS is_brand_product TINYINT(1) DEFAULT 0");
+        $pdo->exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS brand_id INT UNSIGNED NULL");
+        $pdo->exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS file_sharing_url TEXT NULL");
+        $pdo->exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS notes_ar TEXT NULL");
+        $pdo->exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS notes_en TEXT NULL");
+        $pdo->exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS view_count INT DEFAULT 0");
+    } catch (Throwable) {}
+    
+    // Split SQL by semicolons at line boundaries
+    $queries = preg_split('/;\s*(\r\n|\r|\n)/', $fileContent);
+    $executedCount = 0;
+    $skippedErrors = [];
+
+    foreach ($queries as $query) {
+        $q = trim($query);
+        if ($q === '' || str_starts_with($q, '--') || str_starts_with($q, '/*')) {
+            continue;
+        }
+
+        try {
+            $pdo->exec($q);
+            $executedCount++;
+        } catch (Throwable $e) {
+            $errMsg = $e->getMessage();
+
+            // Auto-heal missing column on the fly and retry!
+            if (preg_match("/Unknown column '([^']+)' in 'field list'/i", $errMsg, $colMatch)) {
+                $missingCol = $colMatch[1];
+                if (preg_match('/(?:INSERT|REPLACE|UPDATE)\s+(?:INTO\s+)?`?([a-zA-Z0-9_]+)`?/i', $q, $tblMatch)) {
+                    $tbl = $tblMatch[1];
+                    try {
+                        $pdo->exec("ALTER TABLE `{$tbl}` ADD COLUMN IF NOT EXISTS `{$missingCol}` TEXT NULL;");
+                        // Retry query after adding missing column
+                        $pdo->exec($q);
+                        $executedCount++;
+                        continue;
+                    } catch (Throwable) {}
+                }
+            }
+
+            // If error is duplicate key or non-critical, log and continue
+            if (stripos($errMsg, 'Duplicate entry') !== false || stripos($errMsg, 'already exists') !== false) {
+                continue;
+            }
+
+            $skippedErrors[] = $errMsg;
+        }
+    }
+
+    // Post-import auto-healing and activation
+    try { $pdo->exec("UPDATE products SET active = 1 WHERE active IS NULL OR active = 0;"); } catch (Throwable) {}
+
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS product_categories (
+            product_id INT UNSIGNED NOT NULL,
+            category_slug VARCHAR(64) NOT NULL,
+            PRIMARY KEY (product_id, category_slug)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+        $pdo->exec("INSERT IGNORE INTO product_categories (product_id, category_slug)
+            SELECT id, category FROM products WHERE category IS NOT NULL AND category != '';");
+    } catch (Throwable) {}
+
+    try {
+        $pdo->exec("INSERT IGNORE INTO categories (slug, name_en, name_ar, sort_order)
+            SELECT DISTINCT category, category, category, 10 FROM products WHERE category IS NOT NULL AND category != '';");
+    } catch (Throwable) {}
+
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS product_variants (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            product_id INT UNSIGNED NOT NULL,
+            label_en VARCHAR(255) NOT NULL,
+            label_ar VARCHAR(255) NOT NULL,
+            price DECIMAL(10,2) NOT NULL,
+            compare_at_price DECIMAL(10,2) NULL,
+            stock INT NOT NULL DEFAULT -1,
+            sort_order INT NOT NULL DEFAULT 0,
+            KEY idx_pv_product (product_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+
+        $pdo->exec("INSERT INTO product_variants (product_id, label_en, label_ar, price, compare_at_price, stock, sort_order)
+            SELECT p.id, 'Standard (50ml)', 'الحجم الافتراضي (50 مل)', 250.00, NULL, -1, 0
+            FROM products p
+            WHERE NOT EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id);");
+    } catch (Throwable) {}
+
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS product_reviews (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            product_id INT UNSIGNED NOT NULL,
+            author_name VARCHAR(128) NOT NULL,
+            rating TINYINT NOT NULL DEFAULT 5,
+            review_text TEXT NOT NULL,
+            approved TINYINT(1) NOT NULL DEFAULT 1,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            KEY idx_pr_product (product_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+    } catch (Throwable) {}
+
+    $pdo->exec('SET FOREIGN_KEY_CHECKS=1;');
+
+    $liveProdCount = 0;
+    try { $liveProdCount = (int)$pdo->query("SELECT COUNT(*) FROM products")->fetchColumn(); } catch (Throwable) {}
+
+    return [
+        'executed' => $executedCount,
+        'errors' => $skippedErrors,
+        'products_count' => $liveProdCount,
+    ];
+}
+
+// -------------------------------------------------------------------------
+// 2. Handle POST Actions (Import, Selective Clean, Direct SQL, Optimize)
+// -------------------------------------------------------------------------
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    admin_verify_csrf();
+    $action = $_POST['form_action'] ?? '';
+
+    // A1. Import Built-in SQL Dump (u868008675_zein.sql)
+    if ($action === 'import_builtin_dump') {
+        $dumpPath = dirname(__DIR__) . '/includes/u868008675_zein.sql';
+        if (!file_exists($dumpPath)) {
+            $errorMsg = 'ملف قاعدة البيانات u868008675_zein.sql غير موجود في مجلد includes/.';
+        } else {
+            $fileContent = file_get_contents($dumpPath);
+            if ($fileContent === false || trim($fileContent) === '') {
+                $errorMsg = 'ملف SQL فارغ أو تعذر قراءته.';
+            } else {
+                try {
+                    $res = run_sql_import($pdo, $fileContent);
+                    $successMsg = "🎉 تم استيراد وتفعيل قاعدة البيانات الرسمية بنجاح تام! تم تفعيل ({$res['products_count']}) عطر ومنتج في المتجر.";
+                } catch (Throwable $e) {
+                    $pdo->exec('SET FOREIGN_KEY_CHECKS=1;');
+                    $errorMsg = 'حدث خطأ أثناء استيراد قاعدة البيانات: ' . $e->getMessage();
+                }
+            }
+        }
+    }
+
+    // A2. Import Uploaded SQL File
+    elseif ($action === 'import_sql') {
         if (!isset($_FILES['sql_file']) || $_FILES['sql_file']['error'] !== UPLOAD_ERR_OK) {
             $errorMsg = 'يرجى اختيار ملف SQL صالح للرفع.';
         } else {
@@ -79,122 +226,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $errorMsg = 'ملف SQL فارغ أو تعذر قراءته.';
             } else {
                 try {
-                    $pdo->exec('SET FOREIGN_KEY_CHECKS=0;');
-                    $pdo->exec('SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";');
-
-                    // Pre-create known optional columns on products table
-                    try {
-                        $pdo->exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS ai_profile_ar TEXT NULL");
-                        $pdo->exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS ai_profile_en TEXT NULL");
-                        $pdo->exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS is_brand_product TINYINT(1) DEFAULT 0");
-                        $pdo->exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS brand_id INT UNSIGNED NULL");
-                        $pdo->exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS file_sharing_url TEXT NULL");
-                        $pdo->exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS notes_ar TEXT NULL");
-                        $pdo->exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS notes_en TEXT NULL");
-                        $pdo->exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS view_count INT DEFAULT 0");
-                    } catch (Throwable) {}
-                    
-                    // Split SQL by semicolons at line boundaries
-                    $queries = preg_split('/;\s*(\r\n|\r|\n)/', $fileContent);
-                    $executedCount = 0;
-                    $skippedErrors = [];
-
-                    foreach ($queries as $query) {
-                        $q = trim($query);
-                        if ($q === '' || str_starts_with($q, '--') || str_starts_with($q, '/*')) {
-                            continue;
-                        }
-
-                        try {
-                            $pdo->exec($q);
-                            $executedCount++;
-                        } catch (Throwable $e) {
-                            $errMsg = $e->getMessage();
-
-                            // Auto-heal missing column on the fly and retry!
-                            if (preg_match("/Unknown column '([^']+)' in 'field list'/i", $errMsg, $colMatch)) {
-                                $missingCol = $colMatch[1];
-                                if (preg_match('/(?:INSERT|REPLACE|UPDATE)\s+(?:INTO\s+)?`?([a-zA-Z0-9_]+)`?/i', $q, $tblMatch)) {
-                                    $tbl = $tblMatch[1];
-                                    try {
-                                        $pdo->exec("ALTER TABLE `{$tbl}` ADD COLUMN IF NOT EXISTS `{$missingCol}` TEXT NULL;");
-                                        // Retry query after adding missing column
-                                        $pdo->exec($q);
-                                        $executedCount++;
-                                        continue;
-                                    } catch (Throwable) {}
-                                }
-                            }
-
-                            // If error is duplicate key or non-critical, log and continue
-                            if (stripos($errMsg, 'Duplicate entry') !== false || stripos($errMsg, 'already exists') !== false) {
-                                continue;
-                            }
-
-                            $skippedErrors[] = $errMsg;
-                        }
-                    }
-
-                    // Post-import auto-healing and activation
-                    try { $pdo->exec("UPDATE products SET active = 1 WHERE active IS NULL OR active = 0;"); } catch (Throwable) {}
-
-                    try {
-                        $pdo->exec("CREATE TABLE IF NOT EXISTS product_categories (
-                            product_id INT UNSIGNED NOT NULL,
-                            category_slug VARCHAR(64) NOT NULL,
-                            PRIMARY KEY (product_id, category_slug)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
-                        $pdo->exec("INSERT IGNORE INTO product_categories (product_id, category_slug)
-                            SELECT id, category FROM products WHERE category IS NOT NULL AND category != '';");
-                    } catch (Throwable) {}
-
-                    try {
-                        $pdo->exec("INSERT IGNORE INTO categories (slug, name_en, name_ar, sort_order)
-                            SELECT DISTINCT category, category, category, 10 FROM products WHERE category IS NOT NULL AND category != '';");
-                    } catch (Throwable) {}
-
-                    try {
-                        $pdo->exec("CREATE TABLE IF NOT EXISTS product_variants (
-                            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-                            product_id INT UNSIGNED NOT NULL,
-                            label_en VARCHAR(255) NOT NULL,
-                            label_ar VARCHAR(255) NOT NULL,
-                            price DECIMAL(10,2) NOT NULL,
-                            compare_at_price DECIMAL(10,2) NULL,
-                            stock INT NOT NULL DEFAULT -1,
-                            sort_order INT NOT NULL DEFAULT 0,
-                            KEY idx_pv_product (product_id)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
-
-                        $pdo->exec("INSERT INTO product_variants (product_id, label_en, label_ar, price, compare_at_price, stock, sort_order)
-                            SELECT p.id, 'Standard (50ml)', 'الحجم الافتراضي (50 مل)', 250.00, NULL, -1, 0
-                            FROM products p
-                            WHERE NOT EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id);");
-                    } catch (Throwable) {}
-
-                    try {
-                        $pdo->exec("CREATE TABLE IF NOT EXISTS product_reviews (
-                            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-                            product_id INT UNSIGNED NOT NULL,
-                            author_name VARCHAR(128) NOT NULL,
-                            rating TINYINT NOT NULL DEFAULT 5,
-                            review_text TEXT NOT NULL,
-                            approved TINYINT(1) NOT NULL DEFAULT 1,
-                            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                            KEY idx_pr_product (product_id)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
-                    } catch (Throwable) {}
-
-                    $pdo->exec('SET FOREIGN_KEY_CHECKS=1;');
-
-                    $liveProdCount = 0;
-                    try { $liveProdCount = (int)$pdo->query("SELECT COUNT(*) FROM products")->fetchColumn(); } catch (Throwable) {}
-
-                    if (empty($skippedErrors)) {
-                        $successMsg = "🎉 تم استيراد وتحديث وتفعيل جميع المنتجات في المتجر بنجاح تام! ({$liveProdCount} منتج مفعل في المتجر).";
-                    } else {
-                        $successMsg = "🎉 تم استيراد وتفعيل المنتجات بنجاح! ({$liveProdCount} منتج متاح الآن في المتجر).";
-                    }
+                    $res = run_sql_import($pdo, $fileContent);
+                    $successMsg = "🎉 تم استيراد وتحديث وتفعيل جميع المنتجات في المتجر بنجاح تام! ({$res['products_count']} منتج مفعل في المتجر).";
                 } catch (Throwable $e) {
                     $pdo->exec('SET FOREIGN_KEY_CHECKS=1;');
                     $errorMsg = 'حدث خطأ أثناء تنفيذ استعلامات SQL: ' . $e->getMessage();
@@ -611,6 +644,33 @@ require __DIR__ . '/_layout_start.php';
             <div class="db-stat-val" style="color:#7c3aed;"><?= number_format($dbSizeMB, 2) ?> <span style="font-size:0.8rem; font-weight:normal;">MB</span></div>
         </div>
     </div>
+
+    <!-- 1-Click Official Backup Restoration Banner -->
+    <?php 
+    $builtinDumpPath = dirname(__DIR__) . '/includes/u868008675_zein.sql';
+    if (file_exists($builtinDumpPath)):
+    ?>
+    <div style="background: linear-gradient(135deg, #0b132b 0%, #1c2541 100%); border: 2px solid #d4af37; border-radius: 20px; padding: 1.75rem 2rem; color: #fff; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25); flex-wrap: wrap;">
+        <div style="max-width:700px;">
+            <div style="display:inline-flex; align-items:center; gap:0.4rem; background:rgba(212,175,55,0.2); border:1px solid #d4af37; padding:0.3rem 0.85rem; border-radius:50px; font-size:0.78rem; font-weight:800; color:#fbbf24; margin-bottom:0.6rem;">
+                <span>👑</span> قاعدة بيانات المتجر الرسمية الأصلية (جاهزة للاستيراد المباشر)
+            </div>
+            <h3 style="margin:0 0 0.4rem 0; font-size:1.35rem; font-weight:900; color:#fff;">
+                تثبيت وتفعيل قاعدة بيانات المتجر بالكامل (أكثر من 140 عطر ومنتج حقيقي)
+            </h3>
+            <p style="margin:0; font-size:0.85rem; color:#cbd5e1; line-height:1.6;">
+                تم العثور على ملف النسخة الاحتياطية الرسمية للمتجر (<code style="background:rgba(255,255,255,0.15); color:#ffd700; padding:0.2rem 0.5rem; border-radius:4px; font-weight:bold;">u868008675_zein.sql</code>). يمكنك تفعيل وتثبيت كافة العطور، الصور، الأسعار، الأقسام، والمراجعات بنقرة واحدة مباشرة من السيرفر.
+            </p>
+        </div>
+        <form method="POST" action="database_manage.php" onsubmit="return confirm('هل أنت متأكد من استيراد وتفعيل كافة العطور والتصنيفات من قاعدة البيانات الأصلية الآن؟');">
+            <input type="hidden" name="csrf" value="<?= esc(admin_csrf_token()) ?>">
+            <input type="hidden" name="form_action" value="import_builtin_dump">
+            <button type="submit" class="db-btn db-btn-gold" style="white-space:nowrap; padding:1.1rem 2.2rem; font-size:1.05rem; font-weight:900; background:linear-gradient(135deg, #d4af37 0%, #b45309 100%); color:#ffffff; box-shadow:0 8px 25px rgba(212,175,55,0.4);">
+                <span>⚡</span> تفعيل واستيراد الـ 140 عطر الآن
+            </button>
+        </form>
+    </div>
+    <?php endif; ?>
 
     <!-- 2 Column Section: Import SQL & Selective Cleaner -->
     <div class="db-studio-grid">
