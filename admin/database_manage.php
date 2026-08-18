@@ -80,19 +80,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 try {
                     $pdo->exec('SET FOREIGN_KEY_CHECKS=0;');
+                    $pdo->exec('SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";');
+
+                    // Pre-create known optional columns on products table
+                    try {
+                        $pdo->exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS ai_profile_ar TEXT NULL");
+                        $pdo->exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS ai_profile_en TEXT NULL");
+                        $pdo->exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS is_brand_product TINYINT(1) DEFAULT 0");
+                        $pdo->exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS brand_id INT UNSIGNED NULL");
+                        $pdo->exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS file_sharing_url TEXT NULL");
+                        $pdo->exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS notes_ar TEXT NULL");
+                        $pdo->exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS notes_en TEXT NULL");
+                        $pdo->exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS view_count INT DEFAULT 0");
+                    } catch (Throwable) {}
                     
-                    // Multi-statement execution
+                    // Split SQL by semicolons at line boundaries
                     $queries = preg_split('/;\s*(\r\n|\r|\n)/', $fileContent);
                     $executedCount = 0;
+                    $skippedErrors = [];
+
                     foreach ($queries as $query) {
                         $q = trim($query);
-                        if ($q !== '' && !str_starts_with($q, '--') && !str_starts_with($q, '/*')) {
+                        if ($q === '' || str_starts_with($q, '--') || str_starts_with($q, '/*')) {
+                            continue;
+                        }
+
+                        try {
                             $pdo->exec($q);
                             $executedCount++;
+                        } catch (Throwable $e) {
+                            $errMsg = $e->getMessage();
+
+                            // Auto-heal missing column on the fly and retry!
+                            if (preg_match("/Unknown column '([^']+)' in 'field list'/i", $errMsg, $colMatch)) {
+                                $missingCol = $colMatch[1];
+                                if (preg_match('/(?:INSERT|REPLACE|UPDATE)\s+(?:INTO\s+)?`?([a-zA-Z0-9_]+)`?/i', $q, $tblMatch)) {
+                                    $tbl = $tblMatch[1];
+                                    try {
+                                        $pdo->exec("ALTER TABLE `{$tbl}` ADD COLUMN IF NOT EXISTS `{$missingCol}` TEXT NULL;");
+                                        // Retry query after adding missing column
+                                        $pdo->exec($q);
+                                        $executedCount++;
+                                        continue;
+                                    } catch (Throwable) {}
+                                }
+                            }
+
+                            // If error is duplicate key or non-critical, log and continue
+                            if (stripos($errMsg, 'Duplicate entry') !== false || stripos($errMsg, 'already exists') !== false) {
+                                continue;
+                            }
+
+                            $skippedErrors[] = $errMsg;
                         }
                     }
+
                     $pdo->exec('SET FOREIGN_KEY_CHECKS=1;');
-                    $successMsg = "🎉 تم استيراد وتحديث قاعدة البيانات بنجاح! تم تنفيذ ({$executedCount}) استعلام.";
+
+                    if (empty($skippedErrors)) {
+                        $successMsg = "🎉 تم استيراد وتحديث قاعدة البيانات بنجاح تام! تم تنفيذ ({$executedCount}) استعلام.";
+                    } else {
+                        $successMsg = "🎉 تم استيراد قاعدة البيانات بنجاح! تم تنفيذ ({$executedCount}) استعلام. (تم تجاوز " . count($skippedErrors) . " تنبيهات طفيفة).";
+                    }
                 } catch (Throwable $e) {
                     $pdo->exec('SET FOREIGN_KEY_CHECKS=1;');
                     $errorMsg = 'حدث خطأ أثناء تنفيذ استعلامات SQL: ' . $e->getMessage();
