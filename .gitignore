@@ -40,6 +40,6 @@ scratch/
 # Database dumps & live backups
 *.sql
 !database/schema.sql
+!includes/u868008675_zein.sql
 test/storage/backups/
-includes/*.sql
 tmp/*.sql
