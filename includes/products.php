@@ -128,8 +128,9 @@ function get_products_from_db(): array
     if ($pdo === null) {
         return [];
     }
+    $rows = [];
     try {
-$sql = 'SELECT p.*,
+        $sql = 'SELECT p.*,
             pv_default.id AS default_variant_id,
             pv_default.price AS price,
             (SELECT COALESCE(AVG(rating), 5.0) FROM product_reviews WHERE product_id = p.id) AS average_rating,
@@ -138,12 +139,30 @@ $sql = 'SELECT p.*,
             LEFT JOIN product_variants pv_default ON pv_default.id = (
                 SELECT pv2.id FROM product_variants pv2 WHERE pv2.product_id = p.id ORDER BY pv2.sort_order ASC, pv2.id ASC LIMIT 1
             )
-            WHERE p.active = 1
+            WHERE (p.active = 1 OR p.active IS NULL)
             ORDER BY p.sort_order ASC, p.id ASC';
         $rows = $pdo->query($sql)->fetchAll();
     } catch (Throwable $e) {
-        error_log('Error in products.php get_products_from_db: ' . $e->getMessage());
-        return [];
+        // Fallback without product_reviews subquery
+        try {
+            $sql = 'SELECT p.*,
+                pv_default.id AS default_variant_id,
+                pv_default.price AS price
+                FROM products p
+                LEFT JOIN product_variants pv_default ON pv_default.id = (
+                    SELECT pv2.id FROM product_variants pv2 WHERE pv2.product_id = p.id ORDER BY pv2.sort_order ASC, pv2.id ASC LIMIT 1
+                )
+                WHERE (p.active = 1 OR p.active IS NULL)
+                ORDER BY p.sort_order ASC, p.id ASC';
+            $rows = $pdo->query($sql)->fetchAll();
+        } catch (Throwable $e2) {
+            // Ultimate fallback directly from products table
+            try {
+                $rows = $pdo->query('SELECT p.* FROM products p WHERE (p.active = 1 OR p.active IS NULL) ORDER BY p.id ASC')->fetchAll();
+            } catch (Throwable $e3) {
+                $rows = [];
+            }
+        }
     }
     $out = [];
     foreach ($rows as $r) {
