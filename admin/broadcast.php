@@ -60,8 +60,10 @@ foreach ($products as $p) {
     if (!empty($imgKey) && $imgKey !== 'default') {
         if (str_starts_with($imgKey, 'http://') || str_starts_with($imgKey, 'https://')) {
             $imgUrl = $imgKey;
-        } else {
+        } elseif (str_starts_with($imgKey, 'img_') || str_contains($imgKey, '.')) {
             $imgUrl = storefront_url('assets/uploads/' . ltrim($imgKey, '/'));
+        } else {
+            $imgUrl = storefront_url('assets/img/' . $imgKey . '.jpg');
         }
     }
     $productsJsonList[] = [

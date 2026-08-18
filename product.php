@@ -178,6 +178,8 @@ if ($product) {
     $related = array_slice($related, 0, 4);
 }
 
+$ogImage = !empty($imgUrl) ? $imgUrl : get_og_image();
+
 $extraCss = [
     url('assets/css/pages/product.css?v=' . filemtime(__DIR__ . '/assets/css/pages/product.css'))
 ];
