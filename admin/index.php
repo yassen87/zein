@@ -89,8 +89,20 @@ function trendPct(float $current, float $previous): array
 require __DIR__ . '/_layout_start.php';
 ?>
 
-<h1 style="font-size:1.8rem; font-weight:800; margin-bottom:5px;"><?= esc(t('admin_dashboard')) ?></h1>
-<p class="admin-lead" style="margin-bottom:30px;">مرحباً بك في لوحة التحكم - نظرة عامة على أداء المتجر</p>
+<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:25px;">
+    <div>
+        <h1 style="font-size:1.8rem; font-weight:800; margin-bottom:5px;"><?= esc(t('admin_dashboard')) ?></h1>
+        <p class="admin-lead" style="margin-bottom:0;">مرحباً بك في لوحة التحكم - متجر زين للعطور</p>
+    </div>
+    <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+        <a href="<?= esc(admin_url('database_manage.php')) ?>" style="background:linear-gradient(135deg, #d4af37 0%, #b45309 100%); color:#fff; padding:0.75rem 1.25rem; border-radius:12px; font-weight:800; font-size:0.88rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 15px rgba(212,175,55,0.3);">
+            <span>🗄️</span> استوديو قاعدة البيانات ورفع SQL
+        </a>
+        <a href="https://wa.zeinperfumes.com/" target="_blank" style="background:#0f172a; color:#38bdf8; border:1.5px solid #334155; padding:0.75rem 1.25rem; border-radius:12px; font-weight:800; font-size:0.88rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+            <span>🤖</span> لوحة بوت الواتساب (wa.zeinperfumes.com) ↗
+        </a>
+    </div>
+</div>
 
 <?php if ($pdo === null): ?>
     <div class="admin-error"><?= esc(t('admin_db_connect_error')) ?></div>

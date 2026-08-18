@@ -183,6 +183,26 @@ require __DIR__ . '/_layout_start.php';
 <div class="admin-error" style="margin-bottom:1.5rem;"><?= esc($error) ?></div>
 <?php endif; ?>
 
+<!-- ═══ Database Management Quick Access Card ═════════════════════════ -->
+<div class="admin-card" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border: 1.5px solid rgba(212, 175, 55, 0.4); border-radius: 16px; padding: 1.5rem 2rem; margin-bottom: 2rem; color: #ffffff; display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
+    <div>
+        <div style="font-size: 0.8rem; font-weight: 800; color: #f59e0b; margin-bottom: 0.25rem;">
+            👑 DATABASE STUDIO & BACKUPS
+        </div>
+        <h2 style="margin: 0 0 0.35rem 0; font-size: 1.3rem; font-weight: 900; color: #ffffff;">
+            🗄️ إدارة قاعدة البيانات واستيراد ملفات SQL والنسخ الاحتياطي
+        </h2>
+        <p style="margin: 0; font-size: 0.85rem; color: #94a3b8;">
+            رفع ملفات قاعدة البيانات (.sql)، تصدير النسخ الاحتياطية، وحذف البيانات التجريبية بضغطة زر.
+        </p>
+    </div>
+    <div>
+        <a href="<?= esc(admin_url('database_manage.php')) ?>" style="background: linear-gradient(135deg, #d4af37 0%, #b45309 100%); color: #ffffff; padding: 0.85rem 1.75rem; border-radius: 12px; font-weight: 800; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 15px rgba(212, 175, 55, 0.35);">
+            <span>🚀</span> فتح استوديو قاعدة البيانات
+        </a>
+    </div>
+</div>
+
 <form class="admin-form" method="post" enctype="multipart/form-data">
     <input type="hidden" name="csrf" value="<?= esc(admin_csrf_token()) ?>">
 
@@ -477,8 +497,8 @@ require __DIR__ . '/_layout_start.php';
             <div>
                 <label style="display:block; margin-bottom:.5rem; font-weight:600; font-size:.88rem;">🤖 رابط سيرفر خدمة بوت الواتساب (Microservice URL)</label>
                 <input type="text" name="whatsapp_bot_url"
-                       value="<?= esc($settings_data['whatsapp_bot_url']['en'] ?: 'http://127.0.0.1:3001') ?>"
-                       placeholder="http://127.0.0.1:3001"
+                       value="<?= esc($settings_data['whatsapp_bot_url']['en'] ?: 'https://wa.zeinperfumes.com') ?>"
+                       placeholder="https://wa.zeinperfumes.com"
                        style="width:100%; padding:.7rem; border:1px solid var(--admin-input-border); border-radius:8px; box-sizing:border-box; font-family:monospace;">
             </div>
 

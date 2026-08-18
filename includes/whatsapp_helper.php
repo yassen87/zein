@@ -94,7 +94,7 @@ function get_payment_settings(): array
         'instapay_username' => 'zain@instapay',
         'vodafone_cash_number' => '01111026600',
         'bank_account_info' => 'البنك الأهلي المصري - حساب رقم 123456789 - آيبان: EG123456',
-        'whatsapp_bot_url' => 'http://127.0.0.1:3001',
+        'whatsapp_bot_url' => 'https://wa.zeinperfumes.com',
         'whatsapp_bot_phone' => '201111026600'
     ];
 

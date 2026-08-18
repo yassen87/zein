@@ -115,6 +115,17 @@ $htmlDir = is_rtl() ? 'rtl' : 'ltr';
         <?php endif; ?>
 
         <?php if (admin_has_permission('settings')): ?>
+        <a href="<?= esc(admin_url('database_manage.php')) ?>" class="admin-nav-item" style="background: rgba(212, 175, 55, 0.1); border: 1px solid rgba(212, 175, 55, 0.3); color: #d4af37; font-weight: 800;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+            <span>🗄️ قاعدة البيانات والاستيراد</span>
+        </a>
+        <a href="<?= esc(admin_url('whatsapp_bot.php')) ?>" class="admin-nav-item" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); color: #10b981; font-weight: 800;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+            <span>🤖 بوت الواتساب والتأكيد</span>
+        </a>
+        <?php endif; ?>
+
+        <?php if (admin_has_permission('settings')): ?>
         <div class="admin-nav-section">
             <button class="admin-nav-section__toggle" onclick="toggleNavSection(this)" aria-expanded="false">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path></svg>
@@ -122,8 +133,8 @@ $htmlDir = is_rtl() ? 'rtl' : 'ltr';
                 <svg class="admin-nav-section__arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </button>
             <div class="admin-nav-section__body" style="display:none">
-                <a href="<?= esc(admin_url('settings.php')) ?>">إعدادات الموقع</a>
-                <a href="<?= esc(admin_url('database_manage.php')) ?>" style="color:#d97706; font-weight:bold;">🗄️ قاعدة البيانات والنسخ الاحتياطي</a>
+                <a href="<?= esc(admin_url('settings.php')) ?>">إعدادات الموقع الأساسية</a>
+                <a href="<?= esc(admin_url('database_manage.php')) ?>" style="color:#d4af37; font-weight:bold;">🗄️ قاعدة البيانات والنسخ الاحتياطي</a>
                 <?php if (admin_has_permission('shipping')): ?>
                 <a href="<?= esc(admin_url('shipping.php')) ?>">الشحن والتوصيل</a>
                 <?php endif; ?>
