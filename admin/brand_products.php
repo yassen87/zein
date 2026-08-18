@@ -14,37 +14,42 @@ if ($pdo !== null) {
         $allBrands = $pdo->query('SELECT id, name_en, name_ar FROM brands ORDER BY sort_order ASC, id ASC')->fetchAll();
     } catch (Throwable) {}
 
-    if ($brandId > 0) {
-        $st = $pdo->prepare('
-            SELECT p.*, b.name_en AS brand_name_en, b.name_ar AS brand_name_ar,
-                (SELECT MIN(price) FROM product_variants WHERE product_id = p.id) AS min_price,
-                (SELECT MIN(stock) FROM product_variants WHERE product_id = p.id) AS min_stock,
-                (SELECT SUM(stock) FROM product_variants WHERE product_id = p.id) AS total_stock
-            FROM products p 
-            JOIN product_categories pc ON p.id = pc.product_id 
-            LEFT JOIN brands b ON p.brand_id = b.id
-            WHERE pc.category_slug = \'brands\' AND p.brand_id = ? AND p.active = 1 
-            ORDER BY p.sort_order ASC, p.id ASC
-        ');
-        $st->execute([$brandId]);
-        $rows = $st->fetchAll();
-        
-        $bst = $pdo->prepare('SELECT name_ar, name_en FROM brands WHERE id = ?');
-        $bst->execute([$brandId]);
-        $bRow = $bst->fetch();
-        $brandName = (string) ($bRow['name_ar'] ?: ($bRow['name_en'] ?? 'Brand'));
-    } else {
-        $rows = $pdo->query('
-            SELECT p.*, b.name_en AS brand_name_en, b.name_ar AS brand_name_ar,
-                (SELECT MIN(price) FROM product_variants WHERE product_id = p.id) AS min_price,
-                (SELECT MIN(stock) FROM product_variants WHERE product_id = p.id) AS min_stock,
-                (SELECT SUM(stock) FROM product_variants WHERE product_id = p.id) AS total_stock
-            FROM products p 
-            JOIN product_categories pc ON p.id = pc.product_id 
-            LEFT JOIN brands b ON p.brand_id = b.id
-            WHERE pc.category_slug = \'brands\' AND p.active = 1 
-            ORDER BY p.sort_order ASC, p.id ASC
-        ')->fetchAll();
+    try {
+        if ($brandId > 0) {
+            $st = $pdo->prepare('
+                SELECT p.*, b.name_en AS brand_name_en, b.name_ar AS brand_name_ar,
+                    (SELECT MIN(price) FROM product_variants WHERE product_id = p.id) AS min_price,
+                    (SELECT MIN(stock) FROM product_variants WHERE product_id = p.id) AS min_stock,
+                    (SELECT SUM(stock) FROM product_variants WHERE product_id = p.id) AS total_stock
+                FROM products p 
+                JOIN product_categories pc ON p.id = pc.product_id 
+                LEFT JOIN brands b ON p.brand_id = b.id
+                WHERE pc.category_slug = \'brands\' AND p.brand_id = ? AND p.active = 1 
+                ORDER BY p.sort_order ASC, p.id ASC
+            ');
+            $st->execute([$brandId]);
+            $rows = $st->fetchAll();
+            
+            $bst = $pdo->prepare('SELECT name_ar, name_en FROM brands WHERE id = ?');
+            $bst->execute([$brandId]);
+            $bRow = $bst->fetch();
+            $brandName = (string) ($bRow['name_ar'] ?: ($bRow['name_en'] ?? 'Brand'));
+        } else {
+            $rows = $pdo->query('
+                SELECT p.*, b.name_en AS brand_name_en, b.name_ar AS brand_name_ar,
+                    (SELECT MIN(price) FROM product_variants WHERE product_id = p.id) AS min_price,
+                    (SELECT MIN(stock) FROM product_variants WHERE product_id = p.id) AS min_stock,
+                    (SELECT SUM(stock) FROM product_variants WHERE product_id = p.id) AS total_stock
+                FROM products p 
+                JOIN product_categories pc ON p.id = pc.product_id 
+                LEFT JOIN brands b ON p.brand_id = b.id
+                WHERE pc.category_slug = \'brands\' AND p.active = 1 
+                ORDER BY p.sort_order ASC, p.id ASC
+            ')->fetchAll();
+            $brandName = 'جميع الماركات العالمية';
+        }
+    } catch (Throwable $e) {
+        $rows = [];
         $brandName = 'جميع الماركات العالمية';
     }
 }

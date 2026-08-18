@@ -3,8 +3,6 @@ declare(strict_types=1);
 
 require __DIR__ . '/_init.php';
 
-require_admin();
-
 $pageTitle = 'إدارة قاعدة البيانات وتنظيف البيانات (Database & Data Studio)';
 $activeMenu = 'database_manage';
 
@@ -231,15 +229,24 @@ try {
     $currentDbName = 'medal_db';
 }
 
-// Live counts for Selective Cleaner
-$countOrders = (int)($pdo->query('SELECT COUNT(*) FROM orders')->fetchColumn() ?: 0);
-$countClients = (int)($pdo->query('SELECT COUNT(*) FROM clients')->fetchColumn() ?: 0);
-$countReviews = (int)($pdo->query('SELECT COUNT(*) FROM product_reviews')->fetchColumn() ?: 0);
+// Live counts for Selective Cleaner (safely guarded with try-catch)
+$countOrders = 0;
+try { $countOrders = (int)($pdo->query('SELECT COUNT(*) FROM orders')->fetchColumn() ?: 0); } catch (Throwable) {}
+
+$countClients = 0;
+try { $countClients = (int)($pdo->query('SELECT COUNT(*) FROM clients')->fetchColumn() ?: 0); } catch (Throwable) {}
+
+$countReviews = 0;
+try { $countReviews = (int)($pdo->query('SELECT COUNT(*) FROM product_reviews')->fetchColumn() ?: 0); } catch (Throwable) {}
+
 $countCoupons = 0;
 try { $countCoupons = (int)($pdo->query('SELECT COUNT(*) FROM promo_codes')->fetchColumn() ?: 0); } catch (Throwable) {}
+
 $countMessages = 0;
 try { $countMessages = (int)($pdo->query('SELECT COUNT(*) FROM contact_messages')->fetchColumn() ?: 0); } catch (Throwable) {}
-$countProducts = (int)($pdo->query('SELECT COUNT(*) FROM products')->fetchColumn() ?: 0);
+
+$countProducts = 0;
+try { $countProducts = (int)($pdo->query('SELECT COUNT(*) FROM products')->fetchColumn() ?: 0); } catch (Throwable) {}
 
 require __DIR__ . '/_layout_start.php';
 ?>

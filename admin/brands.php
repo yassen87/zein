@@ -12,17 +12,21 @@ $edit = null;
 $editId = isset($_GET['edit']) ? (int) $_GET['edit'] : 0;
 
 if ($pdo !== null) {
-    $rows = $pdo->query('
-        SELECT b.*, 
-            (SELECT COUNT(*) FROM products p JOIN product_categories pc ON p.id = pc.product_id WHERE pc.category_slug = \'brands\' AND p.brand_id = b.id AND p.active = 1) AS products_count
-        FROM brands b 
-        ORDER BY b.is_popular DESC, b.sort_order ASC, b.id ASC
-    ')->fetchAll();
+    try {
+        $rows = $pdo->query('
+            SELECT b.*, 
+                (SELECT COUNT(*) FROM products p JOIN product_categories pc ON p.id = pc.product_id WHERE pc.category_slug = \'brands\' AND p.brand_id = b.id AND p.active = 1) AS products_count
+            FROM brands b 
+            ORDER BY b.is_popular DESC, b.sort_order ASC, b.id ASC
+        ')->fetchAll();
 
-    if ($editId > 0) {
-        $st = $pdo->prepare('SELECT * FROM brands WHERE id = ?');
-        $st->execute([$editId]);
-        $edit = $st->fetch();
+        if ($editId > 0) {
+            $st = $pdo->prepare('SELECT * FROM brands WHERE id = ?');
+            $st->execute([$editId]);
+            $edit = $st->fetch();
+        }
+    } catch (Throwable $e) {
+        $rows = [];
     }
 }
 
