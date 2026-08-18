@@ -1,0 +1,139 @@
+/* Neo Checkout Overrides */
+:root {
+  --neo-bg: var(--bg);
+  --neo-border: #e2e8f0;
+  --neo-dashed: #94a3b8;
+  --neo-text: #334155;
+  --neo-heading: #0f172a;
+  --neo-muted: #64748b;
+  --neo-input-bg: #f8fafc;
+  --neo-radius: 12px;
+  --neo-font: "Inter", "Tajawal", system-ui, sans-serif;
+}
+.theme-gulf .checkout-layout { background: var(--neo-bg); color: var(--neo-text); font-family: var(--neo-font); padding: 3rem 0; text-align: start; }
+.theme-gulf .checkout-layout h1, .theme-gulf .checkout-layout h2, .theme-gulf .checkout-layout h3 { color: var(--neo-heading); font-family: var(--neo-font); }
+.neo-container { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem; display: flex; flex-direction: column; gap: 3rem; }
+@media(min-width: 900px) { .neo-container { flex-direction: row; align-items: flex-start; } }
+.neo-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1.25rem; }
+.neo-sidebar { width: 100%; max-width: 420px; }
+.neo-sidebar { min-width: 0; }
+.neo-box { background: var(--white); border: 1px solid var(--neo-border); border-radius: var(--neo-radius); padding: 1.25rem; }
+.neo-dashed-box { border: 2px dashed #cbd5e1; border-radius: 16px; padding: 2rem; background: var(--white); }
+.neo-dashed-box:focus-within { border-color: var(--gold); }
+.neo-dashed-box input[type="file"]:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 8px; }
+.neo-progress-text { font-weight: 600; font-size: var(--text-md); margin-bottom: 0.75rem; text-align: center; }
+.neo-progress-bar { background: #e2e8f0; height: 8px; border-radius: 4px; overflow: hidden; }
+.neo-progress-fill { background: #1e293b; width: 40%; height: 100%; border-radius: 4px; }
+.neo-upsell { display: flex; align-items: center; gap: 1rem; }
+.neo-upsell-img { width: 48px; height: 48px; background: #f1f5f9; border-radius: 6px; flex-shrink: 0; background-size: cover; background-position: center; }
+.neo-upsell-info { flex: 1; }
+.neo-upsell-title { font-size: var(--text-md); font-weight: 600; color: var(--neo-text); margin-bottom: 0.15rem; }
+.neo-upsell-price { font-size: var(--text-base); font-weight: 700; color: var(--neo-heading); }
+.neo-btn-var { border: 1px solid var(--neo-border); background: var(--white); font-size: 0.8rem; padding: 0.4rem 0.6rem; border-radius: 6px; cursor: pointer; font-weight: 600; color: var(--neo-text); display: flex; align-items: center; gap: 0.4rem; white-space: nowrap; }
+.neo-btn-var:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.neo-nav-btn { border: none; background: none; color: var(--neo-muted); cursor: pointer; padding: 0.2rem; border-radius: 4px; }
+.neo-nav-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.neo-form-title { font-size: var(--text-lg); margin-top: 0; margin-bottom: 1.75rem; font-weight: 500; color: var(--neo-heading); }
+.neo-input-wrap { position: relative; margin-bottom: 1rem; }
+.neo-input-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); width: 1.15rem; height: 1.15rem; color: #94a3b8; pointer-events: none; }
+.neo-input-wrap input, .neo-input-wrap textarea { width: 100%; background: var(--neo-input-bg); border: 1px solid transparent; padding: 1.1rem 1rem 1.1rem 2.8rem; border-radius: 8px; font-size: var(--text-md); color: var(--neo-text); font-family: inherit; transition: border-color var(--duration-base); }
+.neo-input-wrap textarea { min-height: 80px; resize: vertical; }
+.neo-input-wrap input:focus, .neo-input-wrap textarea:focus { outline: none; border-color: #cbd5e1; background: var(--white); }
+.neo-input-wrap input:focus-visible, .neo-input-wrap textarea:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-color: #cbd5e1; }
+.neo-input-wrap input::placeholder, .neo-input-wrap textarea::placeholder { color: #94a3b8; }
+.neo-select-wrap { position: relative; margin-bottom: 1rem; }
+.neo-select-wrap select { appearance: none; width: 100%; background: var(--neo-input-bg); border: 1px solid transparent; padding: 1.1rem 2.8rem 1.1rem 2.8rem; border-radius: 8px; font-size: var(--text-md); color: var(--neo-text); font-family: inherit; }
+.neo-select-wrap select:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.neo-select-arrow { position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); width: 1rem; height: 1rem; color: #94a3b8; pointer-events: none; }
+.neo-product { display: flex; gap: 1.25rem; margin-bottom: 1.5rem; }
+.neo-product-img { width: 80px; height: 80px; background-color: #f8fafc; border-radius: 8px; flex-shrink: 0; background-size: cover; background-position: center; border: 1px solid var(--neo-border); display: block; }
+.neo-product-info { flex: 1; }
+.neo-product-info { min-width: 0; }
+.neo-product-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.2rem; }
+.neo-product-title { font-size: var(--text-md); font-weight: 600; color: var(--neo-heading); line-height: 1.3; }
+.neo-product-price { font-size: var(--text-md); font-weight: 600; color: var(--neo-heading); white-space: nowrap; margin-left: 0.5rem; }
+.neo-product-meta { font-size: var(--text-sm); color: var(--neo-muted); margin-bottom: 0.15rem; }
+.neo-qty-controls { display: flex; align-items: center; gap: 1rem; margin-top: 0.75rem; }
+.neo-qty-box { display: flex; border: 1px solid var(--neo-border); border-radius: 6px; overflow: hidden; background: var(--white); }
+.neo-qty-btn { padding: 0.25rem 0.6rem; background: var(--white); border: none; cursor: pointer; color: var(--neo-text); font-size: var(--text-base); line-height: 1; border-radius: 4px; }
+.neo-qty-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
+.neo-qty-input { width: 2.5rem; text-align: center; border: none; border-left: 1px solid var(--neo-border); border-right: 1px solid var(--neo-border); font-size: var(--text-base); color: var(--neo-heading); -moz-appearance: textfield; }
+.neo-qty-input:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
+.neo-trash-btn { color: #ef4444; background: none; border: none; cursor: pointer; padding: 0.25rem; display: flex; align-items: center; justify-content: center; border-radius: 4px; }
+.neo-trash-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.neo-summary-table { border-top: 1px solid var(--neo-border); padding-top: 1.5rem; margin-top: 1rem; }
+.neo-summary-row { display: flex; justify-content: space-between; margin-bottom: 1rem; font-size: var(--text-md); color: var(--neo-muted); }
+.neo-summary-row.neo-total { font-size: var(--text-lg); font-weight: 700; color: var(--neo-heading); margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--neo-border); }
+.neo-summary-val { font-weight: 600; color: var(--neo-heading); }
+.neo-submit { width: 100%; background: var(--neo-heading); color: var(--white); border: none; padding: 1.15rem; border-radius: 8px; font-size: 1.05rem; font-weight: 600; cursor: pointer; transition: background var(--duration-base); margin-top: 1.5rem; }
+.neo-submit:hover { background: var(--ink); }
+.neo-submit:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+[dir="rtl"] .neo-input-icon { left: auto; right: 1rem; }
+[dir="rtl"] .neo-input-wrap input, [dir="rtl"] .neo-input-wrap textarea { padding: 1.1rem 2.8rem 1.1rem 1rem; }
+[dir="rtl"] .neo-select-wrap select { padding: 1.1rem 2.8rem 1.1rem 2.8rem; }
+[dir="rtl"] .neo-select-arrow { right: auto; left: 1rem; }
+[dir="rtl"] .neo-product-price { margin-left: 0; margin-right: 0.5rem; }
+[dir="rtl"] .neo-nav-btn svg { transform: scaleX(-1); }
+
+@media (max-width: 899px) {
+  .theme-gulf .checkout-layout {
+    padding: 1.5rem 0 calc(6rem + env(safe-area-inset-bottom, 0px));
+  }
+  .neo-container {
+    padding: 0 1rem;
+    gap: 1.25rem;
+  }
+  .neo-sidebar {
+    max-width: none;
+    order: -1;
+  }
+  .neo-dashed-box,
+  .neo-box {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .neo-container {
+    padding: 0 0.75rem;
+  }
+  .neo-product {
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .neo-product-img {
+    width: 64px;
+    height: 64px;
+  }
+  .neo-product-head {
+    flex-wrap: wrap;
+    gap: 0.25rem 0.5rem;
+  }
+  .neo-product-title {
+    flex: 1 1 100%;
+    font-size: 0.95rem;
+  }
+  .neo-product-price {
+    margin-left: 0;
+    font-size: 0.95rem;
+  }
+  .neo-qty-controls {
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+  .neo-summary-row {
+    gap: 1rem;
+  }
+  .neo-submit {
+    min-height: 50px;
+  }
+  #promo-input-section {
+    flex-direction: column;
+  }
+  #promo-input-section input,
+  #promo-input-section button {
+    width: 100%;
+    min-height: 44px;
+  }
+}

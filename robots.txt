@@ -1,0 +1,13 @@
+
+
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /client/
+Disallow: /includes/
+Disallow: /database/
+Disallow: /tmp/
+Disallow: /scratch/
+Disallow: /assets/uploads/transfers/
+Disallow: /*.php?*lang=*
+Sitemap: https://zainperfumes.com/sitemap.xml

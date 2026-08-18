@@ -1,0 +1,248 @@
+/* Daylight palette — applied when <html class="daylight"> */
+
+html.daylight .theme-gulf {
+    --gold: #a67c00;
+    --gold-dim: #7a5c00;
+    --gold-bright: #c9a227;
+    --gold-glow: rgba(166, 124, 0, 0.18);
+    --bg: #faf8f4;
+    --bg-elevated: #ffffff;
+    --bg-card: #ffffff;
+    --bg-card-hover: #f3efe6;
+    --bg-warm: #f5f0e6;
+    --ink: #1c1917;
+    --ink-muted: #57534e;
+    --white: #ffffff;
+    --border: rgba(166, 124, 0, 0.28);
+    --border-subtle: rgba(28, 25, 23, 0.09);
+    --shadow-sm: 0 2px 10px rgba(28, 25, 23, 0.06);
+    --shadow-md: 0 18px 48px rgba(28, 25, 23, 0.1);
+    --accent-soft: rgba(166, 124, 0, 0.12);
+}
+
+html.daylight .theme-gulf a:hover {
+    color: var(--gold-dim);
+}
+
+html.daylight .theme-gulf .text-link:hover {
+    color: var(--ink);
+}
+
+html.daylight .theme-gulf .top-bar {
+    background: #e8e4dc;
+    border-bottom-color: var(--border-subtle);
+}
+
+html.daylight .theme-gulf .top-bar__promo {
+    color: var(--gold-dim);
+}
+
+html.daylight .theme-gulf .site-header {
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 4px 20px rgba(28, 25, 23, 0.07);
+}
+
+html.daylight .theme-gulf .hero-bg {
+    background:
+        radial-gradient(ellipse 100% 80% at 50% 0%, rgba(201, 162, 39, 0.18), transparent 55%),
+        radial-gradient(ellipse 60% 50% at 100% 100%, rgba(201, 162, 39, 0.1), transparent),
+        linear-gradient(180deg, #f3eee4 0%, var(--bg) 100%);
+}
+
+html.daylight .theme-gulf .hero-pattern {
+    opacity: 0.45;
+}
+
+html.daylight .theme-gulf .hero-shine {
+    background: radial-gradient(ellipse, rgba(201, 162, 39, 0.12), transparent 65%);
+}
+
+html.daylight .theme-gulf .page-hero {
+    background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg) 100%);
+}
+
+html.daylight .theme-gulf .cat-tile__media--all {
+    background: linear-gradient(145deg, #d4c4a8, #a89878);
+}
+
+html.daylight .theme-gulf .cat-tile__media--women {
+    background: linear-gradient(145deg, #e8d0e0, #b898b0);
+}
+
+html.daylight .theme-gulf .cat-tile__media--men {
+    background: linear-gradient(145deg, #c8d4e0, #8898a8);
+}
+
+html.daylight .theme-gulf .cat-tile__media--unisex {
+    background: linear-gradient(145deg, #c8d8c0, #90a888);
+}
+
+html.daylight .theme-gulf .product-card__frame {
+    background: linear-gradient(180deg, #ebe6dc 0%, var(--bg-card) 100%);
+}
+
+html.daylight .theme-gulf .product-visual {
+    background: linear-gradient(145deg, #e8e4de, #d8d4cc);
+    border-color: var(--border-subtle);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+html.daylight .theme-gulf .product-visual::before {
+    background: radial-gradient(circle at 35% 15%, rgba(201, 162, 39, 0.2), transparent 45%);
+}
+
+html.daylight .theme-gulf .product-visual::after {
+    box-shadow: inset 0 -10px 28px rgba(28, 25, 23, 0.12);
+}
+
+html.daylight .theme-gulf .promise {
+    background: linear-gradient(160deg, #f0ebe2 0%, #e8e2d6 50%, #f2ede4 100%);
+    color: var(--ink);
+    border-top-color: var(--border);
+}
+
+html.daylight .theme-gulf .promise::before {
+    background: radial-gradient(ellipse, rgba(201, 162, 39, 0.12), transparent 60%);
+}
+
+html.daylight .theme-gulf .promise h2 {
+    color: var(--ink);
+}
+
+html.daylight .theme-gulf .promise a {
+    color: var(--gold-dim);
+}
+
+html.daylight .theme-gulf .site-footer {
+    background: linear-gradient(180deg, #ede8df 0%, #e2dcd2 100%);
+    border-top-color: var(--border-subtle);
+}
+
+html.daylight .theme-gulf .bundles-card {
+    background: linear-gradient(135deg, var(--bg-card) 0%, #ebe4d8 100%);
+}
+
+html.daylight .theme-gulf .btn-outline--light {
+    border-color: rgba(28, 25, 23, 0.22);
+    color: var(--ink);
+}
+
+html.daylight .theme-gulf .btn-outline--light:hover {
+    border-color: var(--gold);
+    color: var(--gold-dim);
+    background: var(--accent-soft);
+}
+
+html.daylight .theme-gulf .section--discover {
+    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(201, 162, 39, 0.1), transparent);
+}
+
+html.daylight .theme-gulf .section--offers {
+    background: linear-gradient(180deg, rgba(196, 30, 58, 0.05), transparent);
+}
+
+html.daylight .theme-gulf .announce-bar {
+    background: linear-gradient(90deg, rgba(201, 162, 39, 0.14), rgba(201, 162, 39, 0.06), rgba(201, 162, 39, 0.14));
+}
+
+html.daylight .theme-gulf .announce-bar__text {
+    color: var(--gold-dim);
+}
+
+html.daylight .theme-gulf .filter-pill.is-active {
+    color: #1a1508;
+}
+
+html.daylight .theme-gulf .variant-pill__body {
+    background: var(--bg-card);
+}
+
+html.daylight .theme-gulf .variant-pill.is-active .variant-pill__body {
+    background: var(--accent-soft);
+    color: var(--ink);
+    border-color: var(--gold);
+    box-shadow: none;
+}
+
+html.daylight .theme-gulf .variant-pill.is-active .variant-pill__price {
+    color: var(--ink);
+}
+
+html.daylight .theme-gulf .faq-item {
+    background: var(--bg-card);
+}
+
+html.daylight .theme-gulf .contact-form input,
+html.daylight .theme-gulf .contact-form textarea {
+    background: var(--bg-elevated);
+    border-color: var(--border-subtle);
+    color: var(--ink);
+}
+
+/* Theme toggle icon swap (default: sun = go to daylight) */
+html.daylight .theme-gulf .theme-toggle__sun {
+    display: none;
+}
+
+html.daylight .theme-gulf .theme-toggle__moon {
+    display: inline;
+}
+
+/* ── Client nav buttons – Daylight ── */
+html.daylight .theme-gulf .nav-register-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    border: 1.5px solid #a67c00;
+    border-radius: 999px;
+    color: #7a5c00;
+    padding: 0.38rem 1.05rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: background 0.25s, color 0.25s, box-shadow 0.25s, transform 0.2s;
+    background: transparent;
+    white-space: nowrap;
+}
+
+html.daylight .theme-gulf.lang-ar .nav-register-btn {
+    text-transform: none;
+    letter-spacing: 0.02em;
+    font-size: 0.88rem;
+}
+
+html.daylight .theme-gulf .nav-register-btn:hover,
+html.daylight .theme-gulf .nav-register-btn:focus-visible {
+    background: #a67c00;
+    color: #fff !important;
+    box-shadow: 0 0 16px rgba(166, 124, 0, 0.25);
+    transform: translateY(-1px);
+    border-color: #a67c00;
+}
+
+html.daylight .theme-gulf .nav-login-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+}
+
+html.daylight .theme-gulf .nav-account-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+    color: var(--gold-dim);
+    font-weight: 700;
+}
+
+@media (max-width: 900px) {
+    html.daylight .theme-gulf .nav-register-btn {
+        display: inline-flex !important;
+        width: auto !important;
+        border-bottom: none !important;
+        font-size: 0.82rem;
+        padding: 0.4rem 1rem;
+        margin-top: 0.25rem;
+    }
+}

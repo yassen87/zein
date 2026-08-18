@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+*/node_modules/
+*/react_dashboard/node_modules/
+zei_fintech_listener/node_modules/
+
+# WhatsApp Bot Sessions & Cache
+whatsapp_service/.wwebjs_auth/
+whatsapp_service/.wwebjs_cache/
+whatsapp_service/public/qrcodes/
+
+# Android & Gradle Build Artifacts
+.gradle/
+*/.gradle/
+build/
+*/build/
+app/build/
+zei_fintech_listener/android/.gradle/
+zei_fintech_listener/android/app/build/
+zei_fintech_listener/android/build/
+local.properties
+*.apk
+*.aab
+
+# IDE & Editor files
+.idea/
+*/.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Logs & Temporary files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+scratch/
+
+# Database dumps & live backups
+*.sql
+!database/schema.sql
+test/storage/backups/
+includes/*.sql
+tmp/*.sql

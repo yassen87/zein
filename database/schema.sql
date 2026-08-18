@@ -1,0 +1,148 @@
+-- Hostinger Schema (Manual Creation Required via hPanel)
+
+
+CREATE TABLE IF NOT EXISTS admin_users (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  username VARCHAR(64) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS categories (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  slug VARCHAR(64) NOT NULL UNIQUE,
+  name_en VARCHAR(128) NOT NULL,
+  name_ar VARCHAR(128) NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS products (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  slug VARCHAR(128) NOT NULL UNIQUE,
+  category VARCHAR(64) NOT NULL,
+  season ENUM('winter','summer','both') NOT NULL DEFAULT 'both',
+  is_bestseller TINYINT(1) NOT NULL DEFAULT 0,
+  is_offer TINYINT(1) NOT NULL DEFAULT 0,
+  active TINYINT(1) NOT NULL DEFAULT 1,
+  name_en VARCHAR(255) NOT NULL,
+  name_ar VARCHAR(255) NOT NULL,
+  notes_en TEXT,
+  notes_ar TEXT,
+  description_en TEXT NOT NULL,
+  description_ar TEXT NOT NULL,
+  primary_image_key VARCHAR(128) NOT NULL DEFAULT 'default',
+  sort_order INT NOT NULL DEFAULT 0,
+  view_count INT NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS product_variants (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  product_id INT UNSIGNED NOT NULL,
+  label_en VARCHAR(255) NOT NULL,
+  label_ar VARCHAR(255) NOT NULL,
+  price DECIMAL(10,2) NOT NULL,
+  compare_at_price DECIMAL(10,2) NULL,
+  stock INT NOT NULL DEFAULT 0,
+  sort_order INT NOT NULL DEFAULT 0,
+  CONSTRAINT fk_pv_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+  KEY idx_pv_product (product_id)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS product_images (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  product_id INT UNSIGNED NOT NULL,
+  image_key VARCHAR(128) NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  CONSTRAINT fk_pi_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+  KEY idx_pi_product (product_id)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS promo_codes (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  code VARCHAR(64) NOT NULL UNIQUE,
+  discount_percentage INT NOT NULL DEFAULT 0,
+  usage_limit INT NOT NULL DEFAULT 0,
+  used_count INT NOT NULL DEFAULT 0,
+  active TINYINT(1) NOT NULL DEFAULT 1,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS orders (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  order_number VARCHAR(32) NOT NULL UNIQUE,
+  status ENUM('pending','processing','shipped','delivered','cancelled') NOT NULL DEFAULT 'pending',
+  customer_name VARCHAR(255) NOT NULL,
+  customer_email VARCHAR(255) NOT NULL,
+  customer_phone VARCHAR(64) DEFAULT NULL,
+  shipping_address TEXT,
+  city VARCHAR(128) DEFAULT NULL,
+  address_landmark TEXT DEFAULT NULL,
+  admin_notes TEXT,
+  promo_code VARCHAR(64) NULL,
+  subtotal DECIMAL(10,2) NOT NULL,
+  discount_amount DECIMAL(10,2) NULL,
+  shipping_cost DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  total DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_orders_status (status),
+  KEY idx_orders_created (created_at)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS order_items (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  order_id INT UNSIGNED NOT NULL,
+  product_id INT UNSIGNED NOT NULL,
+  variant_id INT UNSIGNED NULL,
+  product_name_snapshot VARCHAR(255) NOT NULL,
+  variant_label_snapshot VARCHAR(255) DEFAULT NULL,
+  qty INT UNSIGNED NOT NULL,
+  unit_price DECIMAL(10,2) NOT NULL,
+  line_total DECIMAL(10,2) NOT NULL,
+  CONSTRAINT fk_oi_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+  KEY idx_oi_order (order_id)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS contact_messages (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  message TEXT NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  read_at DATETIME NULL,
+  KEY idx_cm_created (created_at)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS shipping_cities (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name_en VARCHAR(255) NOT NULL,
+  name_ar VARCHAR(255) NOT NULL,
+  shipping_cost DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  sort_order INT NOT NULL DEFAULT 0,
+  active TINYINT(1) NOT NULL DEFAULT 1
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS settings (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  setting_key VARCHAR(64) NOT NULL UNIQUE,
+  setting_value_en TEXT,
+  setting_value_ar TEXT,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS admin_notifications (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  type VARCHAR(64) NOT NULL,
+  title_ar VARCHAR(255) NOT NULL,
+  title_en VARCHAR(255) NOT NULL,
+  message_ar TEXT,
+  message_en TEXT,
+  link VARCHAR(255),
+  is_read TINYINT(1) NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_notif_read (is_read),
+  KEY idx_notif_created (created_at)
+) ENGINE=InnoDB;
