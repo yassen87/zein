@@ -156,8 +156,14 @@ require __DIR__ . '/_layout_start.php';
                             <input type="text" name="compare_at_price" value="<?= esc($flatCompare) ?>" placeholder="0.00" style="width:100%; padding:0.8rem; border:1px solid #fde68a; border-radius:10px; background:#fff;">
                         </div>
                         <div>
-                            <label style="font-size:0.85rem; color:#666; margin-bottom:0.4rem; display:block;">المخزون</label>
-                            <input type="number" name="stock" value="<?= $flatStock ?>" style="width:100%; padding:0.8rem; border:1px solid #fde68a; border-radius:10px; background:#fff;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+                                <label style="font-size:0.85rem; color:#666; margin:0;">المخزون</label>
+                                <label style="font-size:0.75rem; color:#059669; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:4px;">
+                                    <input type="checkbox" name="flat_unlimited_stock" id="flat_unlimited_stock" value="1" <?= $flatStock < 0 ? 'checked' : '' ?> onchange="toggleFlatUnlimited(this)">
+                                    <span>♾️ غير محدود</span>
+                                </label>
+                            </div>
+                            <input type="number" name="stock" id="flat_stock_input" value="<?= $flatStock < 0 ? -1 : $flatStock ?>" style="width:100%; padding:0.8rem; border:1px solid #fde68a; border-radius:10px; background:#fff; <?= $flatStock < 0 ? 'opacity:0.6;' : '' ?>" <?= $flatStock < 0 ? 'readonly' : '' ?>>
                         </div>
                     </div>
                 </div>
@@ -181,6 +187,19 @@ function handleFormSubmit() {
     }
     return true;
 }
+
+window.toggleFlatUnlimited = function(chk) {
+    var input = document.getElementById('flat_stock_input');
+    if (chk.checked) {
+        input.value = -1;
+        input.readOnly = true;
+        input.style.opacity = '0.6';
+    } else {
+        input.value = 50;
+        input.readOnly = false;
+        input.style.opacity = '1';
+    }
+};
 
 document.addEventListener('DOMContentLoaded', function() {
     const uploadInput = document.getElementById('image-upload-input');

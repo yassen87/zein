@@ -118,12 +118,14 @@ foreach ($_POST['variants'] ?? [] as $row) {
     if ($compare !== null && $compare === false) {
         $compare = null;
     }
+    $isUnl = !empty($row['is_unlimited']) || (isset($row['stock']) && (int)$row['stock'] < 0);
+    $stockVal = $isUnl ? -1 : max(0, (int)($row['stock'] ?? 0));
     $variantRows[] = [
         'label_en' => $le,
         'label_ar' => $la,
         'price' => round((float) $p, 2),
         'compare_at_price' => $compare !== null ? round((float) $compare, 2) : null,
-        'stock' => (int) ($row['stock'] ?? 0),
+        'stock' => $stockVal,
         'sort_order' => (int) ($row['sort_order'] ?? 0),
     ];
 }
@@ -135,7 +137,8 @@ if ($variantRows === []) {
             redirect_back_with_error('السعر مطلوب لمنتجات العروض والماركات');
         }
         $flatCompare = filter_var(trim((string)($_POST['compare_at_price'] ?? '')), FILTER_VALIDATE_FLOAT);
-        $flatStock = (int)($_POST['stock'] ?? 50);
+        $isFlatUnl = !empty($_POST['flat_unlimited_stock']) || (isset($_POST['stock']) && (int)$_POST['stock'] < 0);
+        $flatStock = $isFlatUnl ? -1 : max(0, (int)($_POST['stock'] ?? 50));
         $variantRows[] = [
             'label_en'         => 'Original',
             'label_ar'         => 'الأصلي',

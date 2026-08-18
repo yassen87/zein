@@ -143,19 +143,31 @@ require __DIR__ . '/_layout_start.php';
                         <td data-label="المخزون">
                             <?php 
                             $totalStock = 0;
+                            $isUnlimited = false;
                             if ($pdo !== null) {
                                 try {
-                                    $stk = $pdo->prepare('SELECT SUM(stock) as total FROM product_variants WHERE product_id = ?');
+                                    $stk = $pdo->prepare('SELECT SUM(stock) as total, MIN(stock) as min_stk FROM product_variants WHERE product_id = ?');
                                     $stk->execute([(int)$r['id']]);
-                                    $totalStock = (int)($stk->fetch()['total'] ?? 0);
+                                    $stkRow = $stk->fetch();
+                                    if ($stkRow && (int)($stkRow['min_stk'] ?? 0) < 0) {
+                                        $isUnlimited = true;
+                                    } else {
+                                        $totalStock = (int)($stkRow['total'] ?? 0);
+                                    }
                                 } catch (Throwable $e) {
                                     $totalStock = 'N/A';
                                 }
                             }
                             ?>
-                            <span style="font-weight:700; color:#000; font-size:1rem;">
-                                <?= $totalStock ?>
-                            </span>
+                            <?php if ($isUnlimited): ?>
+                                <span style="display:inline-block; padding:0.25rem 0.6rem; border-radius:8px; font-weight:800; font-size:0.78rem; background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; white-space:nowrap;">
+                                    ♾️ غير محدود
+                                </span>
+                            <?php else: ?>
+                                <span style="font-weight:700; color:<?= $totalStock === 0 ? '#dc2626' : ($totalStock <= 5 ? '#d97706' : '#059669') ?>; font-size:0.95rem;">
+                                    <?= $totalStock ?>
+                                </span>
+                            <?php endif; ?>
                         </td>
                         <td data-label="المشاهدات">
                             <span style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.9rem;color:#000;font-weight:600">

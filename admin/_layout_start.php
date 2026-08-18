@@ -123,6 +123,7 @@ $htmlDir = is_rtl() ? 'rtl' : 'ltr';
             </button>
             <div class="admin-nav-section__body" style="display:none">
                 <a href="<?= esc(admin_url('settings.php')) ?>">إعدادات الموقع</a>
+                <a href="<?= esc(admin_url('database_manage.php')) ?>" style="color:#d97706; font-weight:bold;">🗄️ قاعدة البيانات والنسخ الاحتياطي</a>
                 <?php if (admin_has_permission('shipping')): ?>
                 <a href="<?= esc(admin_url('shipping.php')) ?>">الشحن والتوصيل</a>
                 <?php endif; ?>

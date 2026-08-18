@@ -279,8 +279,14 @@ require __DIR__ . '/_layout_start.php';
                             <input type="text" name="compare_at_price" value="<?= esc($flatCompare) ?>" placeholder="0.00" style="width:100%; padding:0.8rem; border:1px solid #fde68a; border-radius:10px; background:#fff;">
                         </div>
                         <div>
-                            <label style="font-size:0.85rem; color:#666; margin-bottom:0.4rem; display:block;">المخزون</label>
-                            <input type="number" name="stock" value="<?= $flatStock ?>" style="width:100%; padding:0.8rem; border:1px solid #fde68a; border-radius:10px; background:#fff;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+                                <label style="font-size:0.85rem; color:#666; margin:0;">المخزون</label>
+                                <label style="font-size:0.75rem; color:#059669; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:4px;">
+                                    <input type="checkbox" name="flat_unlimited_stock" id="flat_unlimited_stock" value="1" <?= $flatStock < 0 ? 'checked' : '' ?> onchange="toggleFlatUnlimited(this)">
+                                    <span>♾️ غير محدود</span>
+                                </label>
+                            </div>
+                            <input type="number" name="stock" id="flat_stock_input" value="<?= $flatStock < 0 ? -1 : $flatStock ?>" style="width:100%; padding:0.8rem; border:1px solid #fde68a; border-radius:10px; background:#fff; <?= $flatStock < 0 ? 'opacity:0.6;' : '' ?>" <?= $flatStock < 0 ? 'readonly' : '' ?>>
                         </div>
                     </div>
                 </div>
@@ -295,7 +301,7 @@ require __DIR__ . '/_layout_start.php';
                 
                 <div id="variants-container">
                     <?php foreach ($variants as $idx => $v): ?>
-                        <div class="variant-row" style="display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:1rem; margin-bottom:1rem; background:#f9f9f9; padding:1.2rem; border-radius:12px; align-items: end;">
+                        <div class="variant-row" style="display:grid; grid-template-columns: 1.2fr 1fr 1fr auto; gap:1rem; margin-bottom:1rem; background:#f9f9f9; padding:1.2rem; border-radius:12px; align-items: end;">
                             <div>
                                 <label style="font-size:0.85rem; color:#666; margin-bottom:0.4rem; display:block;">الحجم (مثلاً: 100 مل)</label>
                                 <input type="text" name="variants[<?= $idx ?>][label_ar]" value="<?= esc($v['label_ar']) ?>" dir="rtl" placeholder="100 مل" style="width:100%; padding:0.7rem; border:1px solid #ddd; border-radius:8px;">
@@ -306,8 +312,14 @@ require __DIR__ . '/_layout_start.php';
                                 <input type="text" name="variants[<?= $idx ?>][price]" value="<?= esc($v['price']) ?>" placeholder="0.00" style="width:100%; padding:0.7rem; border:1px solid #ddd; border-radius:8px;">
                             </div>
                             <div>
-                                <label style="font-size:0.85rem; color:#666; margin-bottom:0.4rem; display:block;">المخزون</label>
-                                <input type="number" name="variants[<?= $idx ?>][stock]" value="<?= (int) $v['stock'] ?>" style="width:100%; padding:0.7rem; border:1px solid #ddd; border-radius:8px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+                                    <label style="font-size:0.85rem; color:#666; margin:0;">المخزون</label>
+                                    <label style="font-size:0.72rem; color:#059669; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:3px;">
+                                        <input type="checkbox" name="variants[<?= $idx ?>][is_unlimited]" value="1" <?= (int)$v['stock'] < 0 ? 'checked' : '' ?> onchange="toggleVariantUnlimited(this)">
+                                        <span>♾️ غير محدود</span>
+                                    </label>
+                                </div>
+                                <input type="number" name="variants[<?= $idx ?>][stock]" value="<?= (int) $v['stock'] < 0 ? -1 : (int) $v['stock'] ?>" class="variant-stock-input" style="width:100%; padding:0.7rem; border:1px solid #ddd; border-radius:8px; <?= (int)$v['stock'] < 0 ? 'opacity:0.6;' : '' ?>" <?= (int)$v['stock'] < 0 ? 'readonly' : '' ?>>
                             </div>
                             <input type="hidden" name="variants[<?= $idx ?>][sort_order]" value="<?= (int) $v['sort_order'] ?>">
                             <?php if ($idx > 0): ?>
@@ -415,7 +427,7 @@ document.addEventListener('DOMContentLoaded', function() {
     addVariantBtn.addEventListener('click', function() {
         const row = document.createElement('div');
         row.className = 'variant-row';
-        row.style = 'display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:1rem; margin-bottom:1rem; background:#f9f9f9; padding:1.2rem; border-radius:12px; align-items: end;';
+        row.style = 'display:grid; grid-template-columns: 1.2fr 1fr 1fr auto; gap:1rem; margin-bottom:1rem; background:#f9f9f9; padding:1.2rem; border-radius:12px; align-items: end;';
         row.innerHTML = `
             <div>
                 <label style="font-size:0.85rem; color:#666; margin-bottom:0.4rem; display:block;">الحجم (مثلاً: 50 مل)</label>
@@ -427,8 +439,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 <input type="text" name="variants[${variantCount}][price]" placeholder="0.00" style="width:100%; padding:0.7rem; border:1px solid #ddd; border-radius:8px;">
             </div>
             <div>
-                <label style="font-size:0.85rem; color:#666; margin-bottom:0.4rem; display:block;">المخزون</label>
-                <input type="number" name="variants[${variantCount}][stock]" value="10" style="width:100%; padding:0.7rem; border:1px solid #ddd; border-radius:8px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+                    <label style="font-size:0.85rem; color:#666; margin:0;">المخزون</label>
+                    <label style="font-size:0.72rem; color:#059669; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:3px;">
+                        <input type="checkbox" name="variants[${variantCount}][is_unlimited]" value="1" onchange="toggleVariantUnlimited(this)">
+                        <span>♾️ غير محدود</span>
+                    </label>
+                </div>
+                <input type="number" name="variants[${variantCount}][stock]" value="10" class="variant-stock-input" style="width:100%; padding:0.7rem; border:1px solid #ddd; border-radius:8px;">
             </div>
             <input type="hidden" name="variants[${variantCount}][sort_order]" value="${variantCount}">
             <button type="button" class="remove-variant" style="background:#ff4757; color:white; border:none; width:35px; height:35px; border-radius:8px; cursor:pointer; margin-bottom: 0.1rem;">×</button>
@@ -442,6 +460,33 @@ document.addEventListener('DOMContentLoaded', function() {
         variantCount++;
     });
     }
+
+    window.toggleFlatUnlimited = function(chk) {
+        var input = document.getElementById('flat_stock_input');
+        if (chk.checked) {
+            input.value = -1;
+            input.readOnly = true;
+            input.style.opacity = '0.6';
+        } else {
+            input.value = 50;
+            input.readOnly = false;
+            input.style.opacity = '1';
+        }
+    };
+
+    window.toggleVariantUnlimited = function(chk) {
+        var row = chk.closest('.variant-row');
+        var input = row.querySelector('.variant-stock-input');
+        if (chk.checked) {
+            input.value = -1;
+            input.readOnly = true;
+            input.style.opacity = '0.6';
+        } else {
+            input.value = 10;
+            input.readOnly = false;
+            input.style.opacity = '1';
+        }
+    };
 
     if (variantsContainer) {
     variantsContainer.addEventListener('click', function(e) {
