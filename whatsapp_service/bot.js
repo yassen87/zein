@@ -245,18 +245,19 @@ class WhatsAppBot {
         this.userStates.set(phoneJid, statePayload);
 
         const menuText = 
-`🌸 أهلاً بك يا أ/ *${customerName}* في متجر *زين للعطور* 🌸
+`🌸 *أهلاً بك يا أ/ ${customerName} في متجر زين للعطور* 🌸
 
-📦 تم تسجيل طلبك بنجاح برقم: *${orderNumber}*
+📦 تم استلام طلبك بنجاح برقم: *${orderNumber}*
 🚚 مصاريف الشحن: *${shippingCost} ج.م*
-💰 إجمالي الطلب: *${total} ج.م*
+💰 إجمالي المبلغ: *${total} ج.م*
+─────────────────────
+يرجى اختيار الإجراء المطلوب بالرد برقم الخيار:
 
-يرجى الرد برقم الخيار المطلوب لتأكيد طلبك:
-1️⃣ - *تأكيد الطلب واختيار نظام الدفع*
-2️⃣ - *إلغاء الطلب*
-3️⃣ - *تعديل الطلب*
+1️⃣ - *تأكيد الطلب ونظام الدفع* 💳
+2️⃣ - *إلغاء الطلب* ❌
+3️⃣ - *تعديل بيانات الطلب* ✏️
 
-_رد برقم (1 أو 2 أو 3) فقط للمتابعة الفورية._`;
+_(يرجى الرد برقم 1 أو 2 أو 3 للمتابعة)_`;
 
         this.log('outbound', `Sending order menu to ${phoneJid} for order ${orderNumber}`);
         await this.client.sendMessage(phoneJid, menuText);
@@ -345,9 +346,24 @@ _رد برقم (1 أو 2 أو 3) فقط للمتابعة الفورية._`;
                 const isMenuChoice = (body === '1' || body === '١' || body === '2' || body === '٢' || body === '3' || body === '٣' || body.includes('تأكيد') || body.includes('تاكيد'));
                 if (isMenuChoice) {
                     this.log('inbound', `User ${senderJid} sent menu choice without an active order.`);
-                    await msg.reply(`🌸 مرحباً بك في *متجر زين للعطور* 🌸\n\nلم نتمكن من العثور على طلب معلق مسجل برقم هذا الهاتف.\n\n🛍️ لتسجيل طلب جديد، تفضل بزيارة موقعنا:\n🌐 *https://zeinperfumes.com*\n\nأو أرسل رقم طلبك (مثال: MED-XXXX) للمتابعة.`);
+                    await msg.reply(`🌸 *أهلاً بك في متجر زين للعطور* 🌸\n\nلم نتمكن من العثور على طلب معلق مسجل برقم هذا الهاتف.\n\n🛍️ لتسجيل طلب جديد، تفضل بزيارة موقعنا:\n🌐 *https://zeinperfumes.com*\n\nأو أرسل رقم طلبك (مثال: MED-XXXX) لمساعدتك فوراً.`);
                     return;
                 }
+
+                // Friendly greeting for general inquiries without active orders
+                if (body.includes('مرحبا') || body.includes('سلام') || body.includes('hello') || body.includes('hi') || body.includes('صباح') || body.includes('مساء')) {
+                    const welcomeMsg = 
+`🌸 *أهلاً بك في متجر زين للعطور* 🌸
+
+يسعدنا تواصلك معنا! ✨
+🛍️ لتصفح أفخر العطور والعروض الخاصة:
+🌐 *https://zeinperfumes.com*
+
+💬 للاستفسارات وطلب المساعدة، يمكنك كتابة رسالتك وسيقوم فريق خدمة العملاء بالرد عليك قريباً.`;
+                    await msg.reply(welcomeMsg);
+                    return;
+                }
+
                 // Casual / normal chat: do not hijack so staff can chat freely
                 this.log('inbound', `No active order found for ${senderJid} (real: ${realNumber}). Leaving for human staff.`);
                 return;
@@ -407,7 +423,6 @@ _رد برقم (1 أو 2 أو 3) فقط للمتابعة الفورية._`;
                     }
                 }
 
-                // If media could not be saved to disk, generate a timestamped placeholder name so DB record connects
                 if (!filename) {
                     filename = `receipt_${order?.id || 'wa'}_${Date.now()}.jpg`;
                     this.log('warn', `Media data was empty, recorded receipt marker: ${filename}`);
@@ -421,14 +436,13 @@ _رد برقم (1 أو 2 أو 3) فقط للمتابعة الفورية._`;
                 if (stateObj) stateObj.state = 'receipt_received';
                 if (digitsKeyFromReal) this.userStates.set(digitsKeyFromReal, { ...stateObj, state: 'receipt_received' });
 
-                // Exact message requested by user: Waiting for staff verification
                 const replyText = 
 `✅ *تم استلام صورة التحويل بنجاح!*
 
 📦 طلب رقم: *${orderNumber}*
-⏳ الحالة: *في انتظار مراجعة وتأكيد التحويل من قِبل موظف خدمة العملاء.*
+⏳ الحالة: *في انتظار مراجعة وتأكيد التحويل من خدمة العملاء.*
 
-🌸 سيصلك إشعار فوري هنا على الواتساب فور اعتماد الدفع والبدء في تجهيز شحنتك. شكراً لاختيارك *زين للعطور*!`;
+🌸 سيصلك إشعار فوري هنا على الواتساب فور اعتماد الدفع وبدء تجهيز شحنتك. شكراً لاختيارك *زين للعطور*! ✨`;
 
                 await msg.reply(replyText);
 
@@ -466,17 +480,20 @@ _رد برقم (1 أو 2 أو 3) فقط للمتابعة الفورية._`;
                     if (digitsKeyFromReal) this.userStates.set(digitsKeyFromReal, { ...stateObj, state: 'awaiting_receipt', paymentScope: 'shipping_only' });
 
                     const shippingPayMsg = 
-`💳 *بيانات تحويل مصاريف الشحن (انستاباي والمحافظ الإلكترونية):*
+`💳 *بيانات تحويل مصاريف الشحن (زين للعطور)*:
 
-▫️ *انستاباي (InstaPay IPA):* \`${instapayUser}\`
-▫️ *محفظة إلكترونية (فودافون كاش / اتصالات / أورانج / وي):* \`${vodafoneNumber}\`
+▫️ *انستاباي (InstaPay):*
+\`${instapayUser}\`
 
+▫️ *محفظة كاش (فودافون / اتصالات / أورانج / وي):*
+\`${vodafoneNumber}\`
+─────────────────────
 💵 *المبلغ المطلوب تحويله الآن:* *${shippingCostStr} ج.م* (قيمة الشحن)
-🚚 *المبلغ المتبقي تسليمه للمندوب عند الاستلام:* *${remainingForShippingOnly} ج.م*
+🚚 *المبلغ المتبقي عند الاستلام:* *${remainingForShippingOnly} ج.م*
 
-📸 *لتأكيد الحجز فوراً:*
-1️⃣ يمكنك *إرسال صورة إيصال التحويل (Screenshot)* هنا 📸
-2️⃣ *أو* كتابة *رقم العملية / الرقم المرجعي للتحويل* 🔢 هنا في الشات مباشرة.`;
+📸 *لتأكيد الحجز وتجهيز الشحنة فوراً:*
+1️⃣ أرسل *صورة إيصال التحويل (Screenshot)* 📸 هنا
+2️⃣ *أو* اكتب *الرقم المرجعي / كود العملية* 🔢 هنا في الشات.`;
 
                     await msg.reply(shippingPayMsg);
                     return;
@@ -492,17 +509,20 @@ _رد برقم (1 أو 2 أو 3) فقط للمتابعة الفورية._`;
                     if (digitsKeyFromReal) this.userStates.set(digitsKeyFromReal, { ...stateObj, state: 'awaiting_receipt', paymentScope: 'full' });
 
                     const fullPayMsg = 
-`💳 *بيانات تحويل كامل قيمة الطلب (انستاباي والمحافظ الإلكترونية):*
+`💳 *بيانات تحويل كامل قيمة الطلب (زين للعطور)*:
 
-▫️ *انستاباي (InstaPay IPA):* \`${instapayUser}\`
-▫️ *محفظة إلكترونية (فودافون كاش / اتصالات / أورانج / وي):* \`${vodafoneNumber}\`
+▫️ *انستاباي (InstaPay):*
+\`${instapayUser}\`
 
+▫️ *محفظة كاش (فودافون / اتصالات / أورانج / وي):*
+\`${vodafoneNumber}\`
+─────────────────────
 💵 *المبلغ المطلوب تحويله بالكامل:* *${totalStr} ج.م*
-🎉 _(شاملاً المنتجات والشحن، ولن تدفع أي مبالغ إضافية للمندوب عند الاستلام)_
+🎉 _(شامل المنتجات والشحن، ولن تدفع أي مبالغ للمندوب عند الاستلام)_
 
-📸 *لتأكيد الحجز فوراً:*
-1️⃣ يمكنك *إرسال صورة إيصال التحويل (Screenshot)* هنا 📸
-2️⃣ *أو* كتابة *رقم العملية / الرقم المرجعي للتحويل* 🔢 هنا في الشات مباشرة.`;
+📸 *لتأكيد الحجز وتجهيز الشحنة فوراً:*
+1️⃣ أرسل *صورة إيصال التحويل (Screenshot)* 📸 هنا
+2️⃣ *أو* اكتب *الرقم المرجعي / كود العملية* 🔢 هنا في الشات.`;
 
                     await msg.reply(fullPayMsg);
                     return;
@@ -518,17 +538,17 @@ _رد برقم (1 أو 2 أو 3) فقط للمتابعة الفورية._`;
                 if (digitsKeyFromReal) this.userStates.set(digitsKeyFromReal, { ...stateObj, state: 'awaiting_scope_choice' });
 
                 const scopePromptMsg = 
-`🎉 *شكراً لاختيارك متجر زين للعطور يا أ/ ${customerName}!*
-📦 بخصوص طلبك رقم: *${orderNumber}*
+`👑 *شكراً لاختيارك زين للعطور يا أ/ ${customerName}!*
+📦 طلبك رقم: *${orderNumber}*
 
-نظراً لسياسة المتجر في حجز وتجهيز الشحنات، يرجى اختيار نظام التحويل المطلوب:
+نظراً لتجهيز العطور وحجز الشحنة، يرجى تحديد طريقة التحويل:
 
-1️⃣ - *دفع مصاريف الشحن فقط مقدم (${shippingCostStr} ج.م)*
-_(وتسديد باقي قيمة المنتجات ${remainingForShippingOnly} ج.م عند استلام المندوب)_
+1️⃣ - *دفع مصاريف الشحن فقط مقدم (${shippingCostStr} ج.م)* 🚚
+_(ودفع باقي قيمة العطور ${remainingForShippingOnly} ج.م عند الاستلام من المندوب)_
 
-2️⃣ - *دفع كامل قيمة الطلب مقدم (${totalStr} ج.م)*
-_(شاملاً المنتجات ومصاريف الشحن ولا تدفع أي شيء للمندوب)_
-
+2️⃣ - *دفع إجمالي الطلب بالكامل (${totalStr} ج.م)* 💳
+_(شامل المنتجات ومصاريف الشحن بدون أي دفع عند الاستلام)_
+─────────────────────
 _رد برقم (1) لدفع الشحن فقط، أو (2) لدفع كامل المبلغ._`;
 
                 await msg.reply(scopePromptMsg);
@@ -544,8 +564,9 @@ _رد برقم (1) لدفع الشحن فقط، أو (2) لدفع كامل ال�
                 const cancelResponse = 
 `❌ *تم إلغاء طلبك رقم (${orderNumber}) بنجاح.*
 
-نتمنى أن نراك مجدداً قريباً في *متجر زين للعطور*! 🌸
-يمكنك تصفح أحدث العطور والعروض في أي وقت عبر موقعنا.`;
+نتمنى رؤيتك مجدداً قريباً في *متجر زين للعطور*! 🌸
+يمكنك تصفح أحدث العطور والعروض في أي وقت عبر موقعنا:
+🌐 *https://zeinperfumes.com*`;
 
                 await msg.reply(cancelResponse);
                 return;
@@ -556,7 +577,7 @@ _رد برقم (1) لدفع الشحن فقط، أو (2) لدفع كامل ال�
                 const editResponse = 
 `✏️ *لتعديل طلبك رقم (${orderNumber}):*
 
-يمكنك كتابة التعديل المطلوب هنا مباشرة (مثل تغيير العنوان أو العطر) وسيقوم موظف خدمة العملاء بالتواصل معك وتعديل الطلب فوراً. 🌸`;
+يرجى كتابة التعديل المطلوب هنا مباشرة (مثل تعديل العنوان، أو إضافة/تغيير عطر)، وسيقوم أحد ممثلي خدمة العملاء بمساعدتك فوراً. 🌸`;
 
                 await msg.reply(editResponse);
                 return;
@@ -581,9 +602,9 @@ _رد برقم (1) لدفع الشحن فقط، أو (2) لدفع كامل ال�
 
 📦 طلب رقم: *${orderNumber}*
 🔢 رقم العملية / المرجعي: *${refToSave}*
-⏳ الحالة: *في انتظار مراجعة وتأكيد التحويل من قِبل موظف خدمة العملاء.*
+⏳ الحالة: *في انتظار مراجعة وتأكيد التحويل من خدمة العملاء.*
 
-🌸 سيصلك إشعار فوري هنا على الواتساب فور اعتماد الدفع والبدء في تجهيز شحنتك. شكراً لاختيارك *زين للعطور*!`;
+🌸 سيصلك إشعار فوري هنا على الواتساب فور اعتماد الدفع وبدء تجهيز شحنتك. شكراً لاختيارك *زين للعطور*! ✨`;
 
                 await msg.reply(refReply);
 
@@ -598,20 +619,6 @@ _رد برقم (1) لدفع الشحن فقط، أو (2) لدفع كامل ال�
                     });
                 }
                 return;
-            }
-
-            // Default / Welcome Greeting Response
-            if (body.includes('مرحبا') || body.includes('سلام') || body.includes('hello') || body.includes('hi') || body.includes('طلب')) {
-                const welcomeMsg = 
-`أهلاً بك في *متجر زين للعطور* 🌸
-
-إذا كان لديك طلب جديد، يرجى الرد برقم الخيار:
-1️⃣ - *تأكيد الطلب واختيار طريقة الدفع*
-2️⃣ - *إلغاء الطلب*
-3️⃣ - *تعديل الطلب*
-
-ويسعدنا دائماً خدمتك! ✨`;
-                await msg.reply(welcomeMsg);
             }
 
         } catch (err) {
