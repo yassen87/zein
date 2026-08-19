@@ -96,8 +96,9 @@ function send_whatsapp_order_bot_notification(int $orderId, string $orderNumber,
 function get_payment_settings(): array
 {
     $defaults = [
-        'instapay_username' => 'zain@instapay',
-        'vodafone_cash_number' => '01111026600',
+        'instapay_username' => 'ahmedfayoumy1@instapay',
+        'instapay_url' => 'https://ipn.eg/S/ahmedfayoumy1/instapay/7H0dWv',
+        'vodafone_cash_number' => '01005250838',
         'bank_account_info' => 'البنك الأهلي المصري - حساب رقم 123456789 - آيبان: EG123456',
         'whatsapp_bot_url' => 'https://wa.zeinperfumes.com',
         'whatsapp_bot_phone' => '201111026600'

@@ -163,8 +163,9 @@ try {
 
     // 12. Initialize payment and bot settings
     $settingsDefaults = [
-        'instapay_username' => ['zain@instapay', 'zain@instapay'],
-        'vodafone_cash_number' => ['01111026600', '01111026600'],
+        'instapay_username' => ['ahmedfayoumy1@instapay', 'ahmedfayoumy1@instapay'],
+        'instapay_url' => ['https://ipn.eg/S/ahmedfayoumy1/instapay/7H0dWv', 'https://ipn.eg/S/ahmedfayoumy1/instapay/7H0dWv'],
+        'vodafone_cash_number' => ['01005250838', '01005250838'],
         'bank_account_info' => ['National Bank of Egypt - Acc: 123456789 - IBAN: EG123456', 'البنك الأهلي المصري - حساب رقم: 123456789 - آيبان: EG123456'],
         'whatsapp_bot_url' => ['http://127.0.0.1:3001', 'http://127.0.0.1:3001'],
         'whatsapp_bot_enabled' => ['1', '1'],
@@ -172,7 +173,7 @@ try {
     ];
 
     foreach ($settingsDefaults as $key => [$valEn, $valAr]) {
-        $st = $pdo->prepare("INSERT IGNORE INTO settings (setting_key, setting_value_en, setting_value_ar) VALUES (?, ?, ?)");
+        $st = $pdo->prepare("INSERT INTO settings (setting_key, setting_value_en, setting_value_ar) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE setting_value_en = VALUES(setting_value_en), setting_value_ar = VALUES(setting_value_ar)");
         $st->execute([$key, $valEn, $valAr]);
     }
     echo "✅ payment & bot settings initialized<br>";

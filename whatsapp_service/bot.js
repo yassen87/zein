@@ -446,8 +446,9 @@ _(يرجى الرد برقم 1 أو 2 أو 3 للمتابعة)_`;
             const customerName = order?.customer_name || stateObj?.customerName || 'عميلنا العزيز';
 
             const settings = await db.getSettings();
-            const instapayUser = settings.instapay_username || 'zain@instapay';
-            const vodafoneNumber = settings.vodafone_cash_number || '01111026600';
+            const instapayUser = settings.instapay_username || 'ahmedfayoumy1@instapay';
+            const instapayUrl = settings.instapay_url || 'https://ipn.eg/S/ahmedfayoumy1/instapay/7H0dWv';
+            const vodafoneNumber = settings.vodafone_cash_number || '01005250838';
 
             // ── INSTANT TRIGGER: If user clicked the WhatsApp button from the website ──
             if (rawBody.includes('تم استلام طلبك') || rawBody.includes('تم تسجيل طلبك') || (orderRefMatch && rawBody.includes('🌸'))) {
@@ -562,11 +563,13 @@ _رد برقم (1) لدفع الشحن فقط، أو (2) لدفع كامل ال�
                     const shippingPayMsg = 
 `💳 *بيانات تحويل مصاريف الشحن (زين للعطور)*:
 
-▫️ *انستاباي (InstaPay):*
-\`${instapayUser}\`
+🟣 *إنستاباي (InstaPay):*
+▫️ المعرّف: \`${instapayUser}\`
+🔗 *رابط الدفع المباشر بنقرة واحدة:*
+${instapayUrl}
 
-▫️ *محفظة كاش (فودافون / اتصالات / أورانج / وي):*
-\`${vodafoneNumber}\`
+🔴 *محفظة كاش (فودافون كاش / اتصالات / أورانج / وي):*
+▫️ الرقم: \`${vodafoneNumber}\`
 ─────────────────────
 💵 *المبلغ المطلوب تحويله الآن:* *${shippingCostStr} ج.م* (قيمة الشحن)
 🚚 *المبلغ المتبقي عند الاستلام:* *${remainingForShippingOnly} ج.م*
@@ -591,11 +594,13 @@ _رد برقم (1) لدفع الشحن فقط، أو (2) لدفع كامل ال�
                     const fullPayMsg = 
 `💳 *بيانات تحويل كامل قيمة الطلب (زين للعطور)*:
 
-▫️ *انستاباي (InstaPay):*
-\`${instapayUser}\`
+🟣 *إنستاباي (InstaPay):*
+▫️ المعرّف: \`${instapayUser}\`
+🔗 *رابط الدفع المباشر بنقرة واحدة:*
+${instapayUrl}
 
-▫️ *محفظة كاش (فودافون / اتصالات / أورانج / وي):*
-\`${vodafoneNumber}\`
+🔴 *محفظة كاش (فودافون كاش / اتصالات / أورانج / وي):*
+▫️ الرقم: \`${vodafoneNumber}\`
 ─────────────────────
 💵 *المبلغ المطلوب تحويله بالكامل:* *${totalStr} ج.م*
 🎉 _(شامل المنتجات والشحن، ولن تدفع أي مبالغ للمندوب عند الاستلام)_

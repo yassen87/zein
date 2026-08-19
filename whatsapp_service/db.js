@@ -92,8 +92,9 @@ async function getSettings() {
     } catch (e) {
         console.warn('[DB] Fallback to default payment settings:', e.message);
         return {
-            instapay_username: 'zain@instapay',
-            vodafone_cash_number: '01111026600',
+            instapay_username: 'ahmedfayoumy1@instapay',
+            instapay_url: 'https://ipn.eg/S/ahmedfayoumy1/instapay/7H0dWv',
+            vodafone_cash_number: '01005250838',
             bank_account_info: 'البنك الأهلي المصري - حساب رقم 123456789'
         };
     }
