@@ -28,13 +28,22 @@ if (!$order) {
 
 $pageTitle = current_lang() === 'ar' ? 'تم استلام طلبك بنجاح' : 'Order Received Successfully';
 $isArabic = current_lang() === 'ar';
-$waUrl = $_SESSION['last_wa_url'] ?? contact_whatsapp_url(1);
-
 $orderNumber = $order['order_number'] ?? ('#' . $order['id']);
 $total = (float)($order['total'] ?? 0);
 $subtotal = (float)($order['subtotal'] ?? $total);
 $shippingCost = (float)($order['shipping_cost'] ?? 0);
 $discountAmount = (float)($order['discount_amount'] ?? 0);
+$custName = (string)($order['customer_name'] ?? 'عميلنا العزيز');
+
+$fallbackMsg = "🌸 أهلاً بك يا أ/ {$custName} في متجر زين للعطور 🌸\n\n";
+$fallbackMsg .= "📦 تم تسجيل طلبك بنجاح برقم: *{$orderNumber}*\n";
+$fallbackMsg .= "💰 إجمالي المبلغ المطلوب: *" . number_format($total, 2) . " ج.م*\n\n";
+$fallbackMsg .= "يرجى الرد برقم الخيار لتأكيد طلبك:\n";
+$fallbackMsg .= "1️⃣ - *تأكيد الطلب واختيار نظام الدفع*\n";
+$fallbackMsg .= "2️⃣ - *إلغاء الطلب*\n";
+$fallbackMsg .= "3️⃣ - *تعديل الطلب من على الموقع*\n";
+
+$waUrl = contact_whatsapp_url(1) . '?text=' . urlencode($fallbackMsg);
 
 require __DIR__ . '/includes/header.php';
 ?>

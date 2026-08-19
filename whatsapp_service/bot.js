@@ -325,6 +325,13 @@ _رد برقم (1 أو 2 أو 3) فقط للمتابعة الفورية._`;
                 order = await db.findOrderByNumber(stateObj.orderId);
             }
 
+            // Check if user's text contains an explicit order number (e.g. from website fallback link or manual query)
+            const orderRefMatch = rawBody.match(/MED-[A-Z0-9]{6,14}/i) || rawBody.match(/#(\d{1,8})/);
+            if (!order && orderRefMatch) {
+                const matchedRef = orderRefMatch[0].replace('#', '').trim();
+                order = await db.findOrderByNumber(matchedRef);
+            }
+
             if (!order && realNumber) {
                 order = await db.findLatestOrderByPhone(realNumber);
             }
@@ -333,9 +340,17 @@ _رد برقم (1 أو 2 أو 3) فقط للمتابعة الفورية._`;
                 order = await db.findLatestOrderByPhone(senderJid);
             }
 
-            // Fallback to latest pending order in system
+            // If no order exists for this sender, DO NOT hijack with another customer's order!
             if (!order) {
-                order = await db.findLatestPendingOrder();
+                const isMenuChoice = (body === '1' || body === '١' || body === '2' || body === '٢' || body === '3' || body === '٣' || body.includes('تأكيد') || body.includes('تاكيد'));
+                if (isMenuChoice) {
+                    this.log('inbound', `User ${senderJid} sent menu choice without an active order.`);
+                    await msg.reply(`🌸 مرحباً بك في *متجر زين للعطور* 🌸\n\nلم نتمكن من العثور على طلب معلق مسجل برقم هذا الهاتف.\n\n🛍️ لتسجيل طلب جديد، تفضل بزيارة موقعنا:\n🌐 *https://zeinperfumes.com*\n\nأو أرسل رقم طلبك (مثال: MED-XXXX) للمتابعة.`);
+                    return;
+                }
+                // Casual / normal chat: do not hijack so staff can chat freely
+                this.log('inbound', `No active order found for ${senderJid} (real: ${realNumber}). Leaving for human staff.`);
+                return;
             }
 
             if (order && !stateObj) {

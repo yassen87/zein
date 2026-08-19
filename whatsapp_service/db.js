@@ -14,23 +14,31 @@ function getDbConfig() {
     let database = 'medal_db';
     let port = 3306;
 
-    const dbLocalPath = path.join(__dirname, '..', 'includes', 'db.local.php');
-    if (fs.existsSync(dbLocalPath)) {
-        try {
-            const content = fs.readFileSync(dbLocalPath, 'utf8');
-            const dsnMatch = content.match(/host=([^;]+);dbname=([^;]+)/i);
-            const userMatch = content.match(/define\(\s*['"]MEDAL_DB_USER['"]\s*,\s*['"]([^'"]+)['"]\s*\)/i);
-            const passMatch = content.match(/define\(\s*['"]MEDAL_DB_PASS['"]\s*,\s*['"]([^'"]*)['"]\s*\)/i);
+    const filesToTry = [
+        path.join(__dirname, '..', 'includes', 'db.local.php'),
+        path.join(__dirname, '..', 'includes', 'db.hostinger.php'),
+        path.join(__dirname, '..', 'includes', 'db.php')
+    ];
 
-            if (dsnMatch) {
-                const parsedHost = dsnMatch[1].trim();
-                host = (parsedHost === 'localhost') ? '127.0.0.1' : parsedHost;
-                database = dsnMatch[2].trim();
+    for (const filePath of filesToTry) {
+        if (fs.existsSync(filePath)) {
+            try {
+                const content = fs.readFileSync(filePath, 'utf8');
+                const dsnMatch = content.match(/host=([^;]+);dbname=([^;]+)/i);
+                const userMatch = content.match(/define\(\s*['"]MEDAL_DB_USER['"]\s*,\s*['"]([^'"]+)['"]\s*\)/i);
+                const passMatch = content.match(/define\(\s*['"]MEDAL_DB_PASS['"]\s*,\s*['"]([^'"]*)['"]\s*\)/i);
+
+                if (dsnMatch) {
+                    const parsedHost = dsnMatch[1].trim();
+                    host = (parsedHost === 'localhost') ? '127.0.0.1' : parsedHost;
+                    database = dsnMatch[2].trim();
+                }
+                if (userMatch) user = userMatch[1].trim();
+                if (passMatch) password = passMatch[1];
+                if (dsnMatch || userMatch || passMatch) break;
+            } catch (err) {
+                console.error(`[DB] Error parsing ${filePath}:`, err.message);
             }
-            if (userMatch) user = userMatch[1].trim();
-            if (passMatch) password = passMatch[1];
-        } catch (err) {
-            console.error('[DB] Error parsing db.local.php:', err.message);
         }
     }
 
