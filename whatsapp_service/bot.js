@@ -372,23 +372,6 @@ _(يرجى الرد برقم 1 أو 2 أو 3 للمتابعة)_`;
                 return;
             }
 
-            // Multiple Orders Support: if customer has more than 1 pending order and didn't specify which one
-            const isMenuChoice = (body === '1' || body === '١' || body === '2' || body === '٢' || body === '3' || body === '٣' || body.includes('تأكيد') || body.includes('تاكيد'));
-            if (!orderRefMatch && realNumber && (!stateObj || stateObj.state === 'menu')) {
-                const pendingOrders = await db.findPendingOrdersByPhone(realNumber);
-                if (pendingOrders.length > 1 && isMenuChoice) {
-                    let multiMsg = `🌸 *أهلاً بك يا أ/ ${pendingOrders[0].customer_name} في متجر زين للعطور* 🌸\n\n`;
-                    multiMsg += `يوجد لديك *${pendingOrders.length} طلبات معلقة* مسجلة برقمك:\n`;
-                    for (const po of pendingOrders) {
-                        multiMsg += `▫️ طلب رقم: *${po.order_number}* (المبلغ: *${parseFloat(po.total || 0).toFixed(2)} ج.م*)\n`;
-                    }
-                    multiMsg += `─────────────────────\n`;
-                    multiMsg += `لتأكيد أو دفع أي طلب، يرجى كتابة رقم الطلب المطلوب (مثال: *${pendingOrders[0].order_number}*) أو إرسال صورة إيصال التحويل مباشرة. 🌸`;
-                    await msg.reply(multiMsg);
-                    return;
-                }
-            }
-
             if (order) {
                 stateObj = {
                     orderId: order.id,
