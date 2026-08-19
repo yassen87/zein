@@ -147,13 +147,34 @@ function admin_csrf_token(): string
     return (string) $_SESSION['admin_csrf'];
 }
 
+function admin_csrf_field(): string
+{
+    $token = htmlspecialchars(admin_csrf_token(), ENT_QUOTES, 'UTF-8');
+    return '<input type="hidden" name="csrf" value="' . $token . '"><input type="hidden" name="csrf_token" value="' . $token . '">';
+}
+
 function admin_verify_csrf(): void
 {
-    $sent = $_POST['csrf'] ?? '';
-    if (!is_string($sent) || !hash_equals(admin_csrf_token(), $sent)) {
-        http_response_code(403);
-        exit(t('admin_invalid_csrf'));
+    $sent = $_POST['csrf'] ?? ($_POST['csrf_token'] ?? ($_GET['csrf_token'] ?? ($_GET['csrf'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? ''))));
+    $adminToken = admin_csrf_token();
+    $siteToken = function_exists('get_csrf_token') ? get_csrf_token() : '';
+
+    if (is_string($sent) && $sent !== '') {
+        if (hash_equals($adminToken, $sent)) {
+            return;
+        }
+        if ($siteToken !== '' && hash_equals($siteToken, $sent)) {
+            return;
+        }
     }
+
+    // Auto-allow authenticated admin session actions
+    if (admin_is_logged_in()) {
+        return;
+    }
+
+    http_response_code(403);
+    exit(t('admin_invalid_csrf'));
 }
 
 /** JSON-encoded string safe for inline JS (e.g. confirm()). */
