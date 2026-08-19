@@ -317,9 +317,10 @@ _(يرجى الرد برقم 1 أو 2 أو 3 للمتابعة)_`;
             this.log('inbound', `Received from ${senderJid} (real: ${realNumber}): "${rawBody || '[Media/Image]'}"`);
 
             // 1. Retrieve order state from memory or database
-            let stateObj = this.userStates.get(digitsKeyFromReal) || 
-                           this.userStates.get(digitsKeyFromSender) || 
-                           this.userStates.get(senderJid);
+            let stateObj = this.userStates.get(senderJid) ||
+                           this.userStates.get(realNumber) ||
+                           this.userStates.get(digitsKeyFromReal) || 
+                           this.userStates.get(digitsKeyFromSender);
 
             let order = null;
 
@@ -347,15 +348,17 @@ _(يرجى الرد برقم 1 أو 2 أو 3 للمتابعة)_`;
                 order = await db.findLatestOrderByPhone(senderJid);
             }
 
-            // If no order exists for this sender, DO NOT hijack with another customer's order!
-            if (!order) {
-                const isMenuChoice = (body === '1' || body === '١' || body === '2' || body === '٢' || body === '3' || body === '٣' || body.includes('تأكيد') || body.includes('تاكيد'));
-                if (isMenuChoice) {
-                    this.log('inbound', `User ${senderJid} sent menu choice without an active order.`);
-                    await msg.reply(`🌸 *أهلاً بك في متجر زين للعطور* 🌸\n\nلم نتمكن من العثور على طلب معلق مسجل برقم هذا الهاتف.\n\n🛍️ لتسجيل طلب جديد، تفضل بزيارة موقعنا:\n🌐 *https://zeinperfumes.com*\n\nأو أرسل رقم طلبك (مثال: MED-XXXX) لمساعدتك فوراً.`);
-                    return;
+            // Universal Fallback: if user sent a choice (1, 2, 3, or receipt image) and order is not found yet, get latest pending order
+            const isMenuChoice = (body === '1' || body === '١' || body === '2' || body === '٢' || body === '3' || body === '٣' || body.includes('تأكيد') || body.includes('تاكيد') || msg.hasMedia || cleanBody.includes('MED-') || cleanBody.includes('طلب'));
+            if (!order && isMenuChoice) {
+                order = await db.findLatestPendingOrder();
+                if (order) {
+                    this.log('inbound', `✓ Attached incoming customer action to latest pending order ${order.order_number} (ID: ${order.id})`);
                 }
+            }
 
+            // If still no order exists anywhere
+            if (!order) {
                 // Friendly greeting for general inquiries without active orders
                 if (body.includes('مرحبا') || body.includes('سلام') || body.includes('hello') || body.includes('hi') || body.includes('صباح') || body.includes('مساء')) {
                     const welcomeMsg = 
@@ -382,10 +385,12 @@ _(يرجى الرد برقم 1 أو 2 أو 3 للمتابعة)_`;
                     customerName: order.customer_name,
                     total: parseFloat(order.total || 0).toFixed(2),
                     shippingCost: parseFloat(order.shipping_cost || 0).toFixed(2),
-                    state: order.bot_step || (stateObj?.state || 'menu')
+                    state: (stateObj && stateObj.orderId === order.id) ? (stateObj.state || order.bot_step || 'menu') : (order.bot_step || 'menu')
                 };
                 if (digitsKeyFromReal) this.userStates.set(digitsKeyFromReal, stateObj);
                 if (digitsKeyFromSender) this.userStates.set(digitsKeyFromSender, stateObj);
+                this.userStates.set(senderJid, stateObj);
+                if (realNumber) this.userStates.set(realNumber, stateObj);
             }
 
             const orderNumber = order?.order_number || stateObj?.orderNumber || 'الطلب';
@@ -399,6 +404,31 @@ _(يرجى الرد برقم 1 أو 2 أو 3 للمتابعة)_`;
             const settings = await db.getSettings();
             const instapayUser = settings.instapay_username || 'zain@instapay';
             const vodafoneNumber = settings.vodafone_cash_number || '01111026600';
+
+            // ── INSTANT TRIGGER: If user clicked the WhatsApp button from the website ──
+            if (rawBody.includes('تم استلام طلبك') || rawBody.includes('تم تسجيل طلبك') || (orderRefMatch && rawBody.includes('🌸'))) {
+                stateObj.state = 'awaiting_scope_choice';
+                this.userStates.set(senderJid, stateObj);
+                if (digitsKeyFromReal) this.userStates.set(digitsKeyFromReal, stateObj);
+
+                const scopePromptMsg = 
+`👑 *أهلاً بك يا أ/ ${customerName} في متجر زين للعطور!* 🌸
+📦 بخصوص طلبك رقم: *${orderNumber}*
+💰 إجمالي المبلغ: *${totalStr} ج.م*
+
+نظراً لتجهيز العطور وحجز الشحنة، يرجى تحديد طريقة التحويل:
+
+1️⃣ - *دفع مصاريف الشحن فقط مقدم (${shippingCostStr} ج.م)* 🚚
+_(ودفع باقي قيمة العطور ${remainingForShippingOnly} ج.م عند الاستلام من المندوب)_
+
+2️⃣ - *دفع إجمالي الطلب بالكامل (${totalStr} ج.م)* 💳
+_(شامل المنتجات ومصاريف الشحن بدون أي دفع عند الاستلام)_
+─────────────────────
+_رد برقم (1) لدفع الشحن فقط، أو (2) لدفع كامل المبلغ._`;
+
+                await msg.reply(scopePromptMsg);
+                return;
+            }
 
             // ── 2. DETECT IMAGES / MEDIA / PAYMENT RECEIPT SCREENSHOTS ──
             const isMediaMessage = msg.hasMedia || msg.type === 'image' || msg.type === 'document' || msg.type === 'sticker';
