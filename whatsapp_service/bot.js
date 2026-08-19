@@ -172,19 +172,21 @@ class WhatsAppBot {
 
     formatPhone(phone) {
         if (!phone) return null;
-        let clean = phone.replace(/\D/g, '');
+        let clean = phone.replace(/\D/g, '').replace(/^00/, '');
         if (clean.startsWith('01') && clean.length === 11) {
             clean = '2' + clean;
         } else if (clean.startsWith('1') && clean.length === 10) {
             clean = '20' + clean;
+        } else if (clean.startsWith('05') && clean.length === 10) {
+            clean = '966' + clean.slice(1);
         }
         return clean.includes('@c.us') ? clean : `${clean}@c.us`;
     }
 
     getDigitsKey(phoneOrJid) {
         if (!phoneOrJid) return '';
-        const raw = phoneOrJid.replace(/@.*$/, '').replace(/\D/g, '');
-        return raw.length >= 8 ? raw.slice(-9) : raw;
+        const raw = phoneOrJid.replace(/@.*$/, '').replace(/\D/g, '').replace(/^00/, '');
+        return raw.length >= 7 ? raw.slice(-8) : raw;
     }
 
     /**
@@ -221,22 +223,21 @@ class WhatsAppBot {
 
         const phoneJid = this.formatPhone(order.customer_phone);
         if (!phoneJid) {
-            throw new Error('Invalid customer phone number.');
+            throw new Error(`Invalid customer phone: ${order.customer_phone}`);
         }
 
-        const orderNumber = order.order_number || `#${order.id}`;
         const customerName = order.customer_name || 'عميلنا العزيز';
+        const orderNumber = order.order_number || `MED-${order.id}`;
         const total = parseFloat(order.total || 0).toFixed(2);
         const shippingCost = parseFloat(order.shipping_cost || 0).toFixed(2);
-
-        // Store user state keyed by normalized digits
         const digitsKey = this.getDigitsKey(order.customer_phone);
+
         const statePayload = {
             orderId: order.id,
-            orderNumber: orderNumber,
-            customerName: customerName,
-            total: total,
-            shippingCost: shippingCost,
+            orderNumber,
+            customerName,
+            total,
+            shippingCost,
             state: 'menu',
             timestamp: Date.now()
         };
@@ -323,12 +324,14 @@ _(يرجى الرد برقم 1 أو 2 أو 3 للمتابعة)_`;
             let order = null;
 
             // Check if user's text contains an explicit order number (e.g. from website fallback link or manual query)
-            const orderRefMatch = rawBody.match(/MED-[A-Z0-9]{6,14}/i) || rawBody.match(/#(\d{1,8})/);
+            const cleanBody = rawBody.replace(/[\u200E\u200F\u202A-\u202E*_\~`]/g, ' ').trim();
+            const orderRefMatch = cleanBody.match(/MED-[A-Za-z0-9]+/i) || cleanBody.match(/#(\d{1,8})/);
             if (orderRefMatch) {
                 const matchedRef = orderRefMatch[0].replace('#', '').trim();
                 const matchedOrder = await db.findOrderByNumber(matchedRef);
                 if (matchedOrder) {
                     order = matchedOrder;
+                    this.log('inbound', `✓ Matched order ${order.order_number} directly from text reference "${matchedRef}"`);
                 }
             }
 

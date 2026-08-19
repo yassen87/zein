@@ -100,37 +100,67 @@ async function getSettings() {
 }
 
 /**
- * Find order by phone with smart matching (latest pending/active preferred)
+ * Normalize phone number digits for universal comparison
+ */
+function normalizeDigits(phone) {
+    if (!phone) return '';
+    let d = String(phone).replace(/\D/g, '');
+    // Remove international prefix 00
+    if (d.startsWith('00')) d = d.substring(2);
+    return d;
+}
+
+/**
+ * Find order by phone with smart international matching (latest pending/active preferred)
  */
 async function findLatestOrderByPhone(phone) {
     if (!phone) return null;
     try {
-        const digits = phone.replace(/\D/g, '');
+        const digits = normalizeDigits(phone);
         if (digits.length < 5) return null;
 
+        const last7 = digits.slice(-7);
         const last8 = digits.slice(-8);
         const last9 = digits.slice(-9);
+        const last10 = digits.slice(-10);
 
-        // First try to find a pending/unconfirmed order
+        // 1. Try SQL query matching suffixes
         let rows = await query(
             `SELECT * FROM orders 
-             WHERE (customer_phone LIKE ? OR customer_phone LIKE ? OR REPLACE(REPLACE(customer_phone, ' ', ''), '+', '') LIKE ?)
-               AND status NOT IN ('cancelled', 'delivered')
-             ORDER BY id DESC LIMIT 1`,
-            [`%${last8}%`, `%${last9}%`, `%${last8}%`]
+             WHERE (
+                 customer_phone LIKE ? 
+                 OR customer_phone LIKE ? 
+                 OR customer_phone LIKE ? 
+                 OR customer_phone LIKE ?
+                 OR REPLACE(REPLACE(REPLACE(customer_phone, ' ', ''), '+', ''), '-', '') LIKE ?
+             )
+             ORDER BY id DESC LIMIT 20`,
+            [`%${last7}%`, `%${last8}%`, `%${last9}%`, `%${last10}%`, `%${last8}%`]
         );
-        if (rows.length > 0) return rows[0];
 
-        // If none pending, return the latest order overall
-        rows = await query(
-            `SELECT * FROM orders 
-             WHERE customer_phone LIKE ? 
-                OR customer_phone LIKE ? 
-                OR REPLACE(REPLACE(customer_phone, ' ', ''), '+', '') LIKE ?
-             ORDER BY id DESC LIMIT 1`,
-            [`%${last8}%`, `%${last9}%`, `%${last8}%`]
+        if (rows.length > 0) {
+            // Prioritize pending/unconfirmed order among matches
+            const pending = rows.find(r => r.status !== 'cancelled' && r.status !== 'delivered');
+            if (pending) return pending;
+            return rows[0];
+        }
+
+        // 2. Fallback in-memory comparison for complex country codes / local formats
+        const recentOrders = await query(
+            `SELECT * FROM orders WHERE customer_phone IS NOT NULL AND customer_phone != '' ORDER BY id DESC LIMIT 100`
         );
-        return rows.length > 0 ? rows[0] : null;
+        for (const o of recentOrders) {
+            const oDigits = normalizeDigits(o.customer_phone);
+            if (!oDigits || oDigits.length < 5) continue;
+            if (digits === oDigits || digits.endsWith(oDigits) || oDigits.endsWith(digits)) {
+                return o;
+            }
+            if (digits.length >= 8 && oDigits.length >= 8) {
+                if (digits.slice(-8) === oDigits.slice(-8)) return o;
+            }
+        }
+
+        return null;
     } catch (e) {
         console.error('[DB] findLatestOrderByPhone error:', e.message);
         return null;
@@ -138,12 +168,12 @@ async function findLatestOrderByPhone(phone) {
 }
 
 /**
- * Find all active pending orders for a phone number
+ * Find all active pending orders for a phone number (universal international support)
  */
 async function findPendingOrdersByPhone(phone) {
     if (!phone) return [];
     try {
-        const digits = phone.replace(/\D/g, '');
+        const digits = normalizeDigits(phone);
         if (digits.length < 5) return [];
 
         const last8 = digits.slice(-8);
@@ -151,8 +181,12 @@ async function findPendingOrdersByPhone(phone) {
 
         const rows = await query(
             `SELECT * FROM orders 
-             WHERE (customer_phone LIKE ? OR customer_phone LIKE ? OR REPLACE(REPLACE(customer_phone, ' ', ''), '+', '') LIKE ?)
-               AND status NOT IN ('cancelled', 'delivered')
+             WHERE (
+                 customer_phone LIKE ? 
+                 OR customer_phone LIKE ? 
+                 OR REPLACE(REPLACE(REPLACE(customer_phone, ' ', ''), '+', ''), '-', '') LIKE ?
+             )
+             AND status NOT IN ('cancelled', 'delivered')
              ORDER BY id DESC LIMIT 5`,
             [`%${last8}%`, `%${last9}%`, `%${last8}%`]
         );
