@@ -44,21 +44,51 @@ function medal_pdo(): ?PDO
 }
 
 /**
- * Checks if the database has essential tables.
+ * Safely ensure a column exists in a MySQL table without version-specific syntax errors.
  */
-function medal_db_is_initialized(): bool
+function medal_ensure_column(PDO $pdo, string $table, string $column, string $definition): void
 {
-    $pdo = medal_pdo();
-    if ($pdo === null) {
-        return false;
+    try {
+        $st = $pdo->prepare("SHOW COLUMNS FROM `{$table}` LIKE ?");
+        $st->execute([$column]);
+        if ($st->rowCount() === 0) {
+            $pdo->exec("ALTER TABLE `{$table}` ADD `{$column}` {$definition}");
+        }
+    } catch (Throwable) {}
+}
+
+/**
+ * Ensures orders and order_items tables have all required columns.
+ */
+function medal_ensure_orders_schema(PDO $pdo): void
+{
+    static $done = false;
+    if ($done) {
+        return;
     }
     try {
-        // Check for essential tables
-        $pdo->query('SELECT 1 FROM admin_users LIMIT 1');
-        $pdo->query('SELECT 1 FROM products LIMIT 1');
-        return true;
-    } catch (Throwable $e) {
-        error_log('Error in db.php medal_db_is_initialized: ' . $e->getMessage());
-        return false;
-    }
+        medal_ensure_column($pdo, 'orders', 'confirmation_code', 'VARCHAR(16) NULL');
+        medal_ensure_column($pdo, 'orders', 'is_confirmed', 'TINYINT(1) NOT NULL DEFAULT 0');
+        medal_ensure_column($pdo, 'orders', 'bot_step', 'VARCHAR(32) NOT NULL DEFAULT \'initial\'');
+        medal_ensure_column($pdo, 'orders', 'confirmed_at', 'DATETIME NULL');
+        medal_ensure_column($pdo, 'orders', 'wa_conf_sent', 'TINYINT(1) NOT NULL DEFAULT 0');
+        medal_ensure_column($pdo, 'orders', 'payment_method', 'VARCHAR(32) NOT NULL DEFAULT \'cod\'');
+        medal_ensure_column($pdo, 'orders', 'payment_status', 'VARCHAR(32) NOT NULL DEFAULT \'unpaid\'');
+        medal_ensure_column($pdo, 'orders', 'paid_amount', 'DECIMAL(10,2) NOT NULL DEFAULT 0.00');
+        medal_ensure_column($pdo, 'orders', 'waived_amount', 'DECIMAL(10,2) NOT NULL DEFAULT 0.00');
+        medal_ensure_column($pdo, 'orders', 'delivered_at', 'DATETIME NULL');
+        medal_ensure_column($pdo, 'orders', 'address_landmark', 'TEXT NULL');
+        medal_ensure_column($pdo, 'orders', 'admin_notes', 'TEXT NULL');
+        medal_ensure_column($pdo, 'orders', 'promo_code', 'VARCHAR(64) NULL');
+        medal_ensure_column($pdo, 'orders', 'discount_amount', 'DECIMAL(10,2) NULL');
+        medal_ensure_column($pdo, 'orders', 'shipping_cost', 'DECIMAL(10,2) NOT NULL DEFAULT 0.00');
+        medal_ensure_column($pdo, 'order_items', 'variant_label_snapshot', 'VARCHAR(255) NULL');
+        medal_ensure_column($pdo, 'order_items', 'variant_id', 'INT(10) UNSIGNED NULL');
+
+        // Make customer_email nullable
+        try {
+            $pdo->exec("ALTER TABLE orders MODIFY customer_email VARCHAR(255) NULL DEFAULT ''");
+        } catch (Throwable) {}
+    } catch (Throwable) {}
+    $done = true;
 }
