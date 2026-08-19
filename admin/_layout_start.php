@@ -115,11 +115,7 @@ $htmlDir = is_rtl() ? 'rtl' : 'ltr';
         <?php endif; ?>
 
         <?php if (admin_has_permission('settings')): ?>
-        <a href="<?= esc(admin_url('developer_hub.php')) ?>" class="admin-nav-item" style="background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(99, 102, 241, 0.15)); border: 1px solid rgba(212, 175, 55, 0.4); color: #d4af37; font-weight: 800;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-            <span>⚡ تحكم المطورين والصيانة</span>
-        </a>
-        <a href="<?= esc(admin_url('database_manage.php')) ?>" class="admin-nav-item" style="background: rgba(212, 175, 55, 0.08); border: 1px solid rgba(212, 175, 55, 0.25); color: #d4af37; font-weight: 700;">
+        <a href="<?= esc(admin_url('database_manage.php')) ?>" class="admin-nav-item" style="background: rgba(212, 175, 55, 0.1); border: 1px solid rgba(212, 175, 55, 0.3); color: #d4af37; font-weight: 800;">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
             <span>🗄️ قاعدة البيانات والاستيراد</span>
         </a>
