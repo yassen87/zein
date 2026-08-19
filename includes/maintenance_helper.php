@@ -58,9 +58,15 @@ function check_and_enforce_maintenance(): void {
         return;
     }
 
-    // Always allow admin panel
+    $script = basename($_SERVER['SCRIPT_NAME'] ?? '');
     $uri = $_SERVER['REQUEST_URI'] ?? '';
-    if (strpos($uri, '/admin/') !== false) {
+
+    // ALWAYS allow developer portal and admin panel so you can NEVER get locked out
+    if (
+        strpos($uri, '/admin/') !== false || 
+        strpos($uri, 'developer.php') !== false || 
+        $script === 'developer.php'
+    ) {
         return;
     }
 
@@ -69,7 +75,12 @@ function check_and_enforce_maintenance(): void {
         @session_start();
     }
 
-    if (!empty($_SESSION['admin_logged_in']) || !empty($_SESSION['admin_user']) || !empty($_SESSION['admin_id'])) {
+    if (
+        !empty($_SESSION['medal_admin_id']) || 
+        !empty($_SESSION['admin_logged_in']) || 
+        !empty($_SESSION['admin_user']) || 
+        !empty($_SESSION['admin_id'])
+    ) {
         $GLOBALS['is_maintenance_admin_bypass'] = true;
         return;
     }
@@ -255,7 +266,10 @@ function render_maintenance_screen(): void {
                 </a>
             </div>
 
-            <a href="/admin/login.php" class="admin-link">🔒 <?= $isAr ? 'تسجيل دخول الإدارة والمبرمجين' : 'Admin & Developer Login' ?></a>
+            <div style="display: flex; justify-content: center; gap: 1.5rem; flex-wrap: wrap; margin-top: 2rem;">
+                <a href="/developer.php" class="admin-link">⚡ <?= $isAr ? 'بوابة تحكم المطورين' : 'Developer Portal' ?></a>
+                <a href="/admin/login.php" class="admin-link">🔒 <?= $isAr ? 'تسجيل دخول الإدارة' : 'Admin Login' ?></a>
+            </div>
         </div>
     </body>
     </html>
