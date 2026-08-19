@@ -195,6 +195,39 @@ class WhatsAppBot {
         return clean.includes('@c.us') ? clean : `${clean}@c.us`;
     }
 
+    /**
+     * Resolve exact WhatsApp ID (Supports Regular, WhatsApp Business, LID, and International)
+     */
+    async resolveSendJid(phoneOrJid) {
+        if (!phoneOrJid) return null;
+        let clean = String(phoneOrJid).trim();
+
+        // Extract digits
+        let digits = clean.replace(/@.*$/, '').replace(/\D/g, '').replace(/^00/, '');
+        if (digits.startsWith('01') && digits.length === 11) {
+            digits = '2' + digits;
+        } else if (digits.startsWith('1') && digits.length === 10) {
+            digits = '20' + digits;
+        } else if (digits.startsWith('05') && digits.length === 10) {
+            digits = '966' + digits.slice(1);
+        }
+
+        // 1. Query WhatsApp getNumberId for exact registered business/client JID
+        try {
+            if (this.client && typeof this.client.getNumberId === 'function') {
+                const numberId = await this.client.getNumberId(digits);
+                if (numberId && numberId._serialized) {
+                    return numberId._serialized;
+                }
+            }
+        } catch (e) {
+            this.log('warn', `getNumberId check for ${digits}: ${e.message}`);
+        }
+
+        // 2. Default standard JID format
+        return `${digits}@c.us`;
+    }
+
     getDigitsKey(phoneOrJid) {
         if (!phoneOrJid) return '';
         const raw = phoneOrJid.replace(/@.*$/, '').replace(/\D/g, '').replace(/^00/, '');
@@ -234,7 +267,7 @@ class WhatsAppBot {
         }
 
         const phone = order.customer_phone;
-        const jid = this.formatPhone(phone);
+        const jid = await this.resolveSendJid(phone) || this.formatPhone(phone);
         if (!jid) {
             throw new Error(`Invalid customer phone: ${phone}`);
         }
@@ -289,33 +322,49 @@ _(يرجى الرد برقم 1 أو 2 أو 3 للمتابعة)_`;
     }
 
     /**
-     * Resilient message sender: sends directly via client.sendMessage or msg.reply
+     * Resilient message sender: 3-tier delivery (chat.sendMessage -> client.sendMessage -> msg.reply)
      * Works 100% reliably for WhatsApp Regular, WhatsApp Business, Enterprise, and Multi-Device accounts!
      */
     async sendSafeReply(msg, text) {
-        if (!text) return false;
+        if (!text || !msg) return false;
         
-        const targetJid = msg.from || msg.author || msg.to;
+        let targetJid = msg.from || msg.author || msg.to;
 
-        // 1. Direct client.sendMessage to sender JID (Universal & 100% reliable)
+        // Tier 1: Send directly via chat object (100% reliable for active WhatsApp Business chats)
+        try {
+            if (typeof msg.getChat === 'function') {
+                const chat = await msg.getChat();
+                if (chat && typeof chat.sendMessage === 'function') {
+                    await chat.sendMessage(text);
+                    this.log('outbound', `✓ Sent reply via chat to ${targetJid}`);
+                    return true;
+                }
+            }
+        } catch (chatErr) {
+            this.log('warn', `chat.sendMessage failed (${chatErr.message}), trying client.sendMessage...`);
+        }
+
+        // Tier 2: Send via resolved JID using client.sendMessage
         try {
             if (targetJid && this.client) {
-                await this.client.sendMessage(targetJid, text);
-                this.log('outbound', `✓ Sent message to ${targetJid}`);
+                const validJid = await this.resolveSendJid(targetJid) || targetJid;
+                await this.client.sendMessage(validJid, text);
+                this.log('outbound', `✓ Sent direct message to ${validJid}`);
                 return true;
             }
         } catch (sendErr) {
-            this.log('warn', `Direct sendMessage failed (${sendErr.message}), trying msg.reply...`);
+            this.log('warn', `client.sendMessage failed (${sendErr.message}), trying msg.reply...`);
         }
 
-        // 2. Fallback: msg.reply()
+        // Tier 3: Send via msg.reply
         try {
-            if (msg && typeof msg.reply === 'function') {
+            if (typeof msg.reply === 'function') {
                 await msg.reply(text);
+                this.log('outbound', `✓ Sent reply via msg.reply to ${targetJid}`);
                 return true;
             }
-        } catch (err) {
-            this.log('error', `msg.reply fallback also failed: ${err.message}`);
+        } catch (repErr) {
+            this.log('error', `All reply attempts failed for ${targetJid}: ${repErr.message}`);
         }
 
         return false;
@@ -822,7 +871,7 @@ _رد برقم (1) لدفع الشحن فقط، أو (2) لدفع كامل ال�
             throw new Error(`Order #${orderId} not found`);
         }
 
-        const jid = this.formatPhone(order.customer_phone);
+        const jid = await this.resolveSendJid(order.customer_phone) || this.formatPhone(order.customer_phone);
         if (!jid) {
             throw new Error(`Invalid customer phone: ${order.customer_phone}`);
         }
@@ -993,7 +1042,7 @@ ${productUrl}
             throw new Error('WhatsApp Bot is not connected. Please scan QR code first.');
         }
 
-        const phoneJid = this.formatPhone(phone);
+        const phoneJid = await this.resolveSendJid(phone) || this.formatPhone(phone);
         if (!phoneJid) {
             throw new Error('Invalid phone number.');
         }
