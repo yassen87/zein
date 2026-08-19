@@ -225,6 +225,9 @@ require __DIR__ . '/includes/header.php';
                 try {
                     try {
                         $pdo->exec("ALTER TABLE orders MODIFY customer_email VARCHAR(255) NULL DEFAULT ''");
+                        $pdo->exec("ALTER TABLE orders MODIFY customer_phone VARCHAR(64) NULL DEFAULT ''");
+                        $pdo->exec("ALTER TABLE orders MODIFY shipping_address TEXT NULL");
+                        $pdo->exec("ALTER TABLE orders MODIFY city VARCHAR(128) NULL DEFAULT ''");
                         $pdo->exec("ALTER TABLE orders ADD COLUMN IF NOT EXISTS confirmation_code VARCHAR(16) NULL");
                         $pdo->exec("ALTER TABLE orders ADD COLUMN IF NOT EXISTS is_confirmed TINYINT(1) NOT NULL DEFAULT 0");
                         $pdo->exec("ALTER TABLE orders ADD COLUMN IF NOT EXISTS bot_step VARCHAR(32) NOT NULL DEFAULT 'initial'");
@@ -235,6 +238,7 @@ require __DIR__ . '/includes/header.php';
                         $pdo->exec("ALTER TABLE orders ADD COLUMN IF NOT EXISTS paid_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00");
                         $pdo->exec("ALTER TABLE orders ADD COLUMN IF NOT EXISTS waived_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00");
                         $pdo->exec("ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivered_at DATETIME NULL");
+                        $pdo->exec("ALTER TABLE order_items ADD COLUMN IF NOT EXISTS variant_label_snapshot VARCHAR(255) NULL");
                     } catch (Throwable $me) {}
 
                     $pdo->beginTransaction();
@@ -303,14 +307,16 @@ require __DIR__ . '/includes/header.php';
                     $pdo->commit();
 
                     // Notify Admins
-                    add_admin_notification(
-                        'new_order',
-                        'طلب جديد: ' . $orderNumber,
-                        'New Order: ' . $orderNumber,
-                        'لديك طلب جديد من ' . $name . ' بقيمة ' . format_price($totalForSubmit - $discountAmount + $shippingCost),
-                        'New order from ' . $name . ' total ' . format_price($totalForSubmit - $discountAmount + $shippingCost),
-                        'order_view.php?id=' . $oid
-                    );
+                    try {
+                        add_admin_notification(
+                            'new_order',
+                            'طلب جديد: ' . $orderNumber,
+                            'New Order: ' . $orderNumber,
+                            'لديك طلب جديد من ' . $name . ' بقيمة ' . format_price($totalForSubmit - $discountAmount + $shippingCost),
+                            'New order from ' . $name . ' total ' . format_price($totalForSubmit - $discountAmount + $shippingCost),
+                            'order_view.php?id=' . $oid
+                        );
+                    } catch (Throwable $ne) {}
 
                     // Deduct stock — runs AFTER commit so failure never blocks the order
                     try {
@@ -367,11 +373,14 @@ require __DIR__ . '/includes/header.php';
                     }
 
                     // Trigger WhatsApp Bot Notification (1 - Confirm, 2 - Cancel, 3 - Edit)
-                    $orderTotal = (float)($totalForSubmit - $discountAmount + $shippingCost);
-                    require_once __DIR__ . '/includes/whatsapp_helper.php';
-                    $waResult = send_whatsapp_order_bot_notification($oid, $orderNumber, $name, $phone, $orderTotal, $orderLines, (float)$shippingCost);
-
-                    $_SESSION['last_wa_url'] = $waResult['fallback_wa_url'] ?? contact_whatsapp_url(1);
+                    try {
+                        $orderTotal = (float)($totalForSubmit - $discountAmount + $shippingCost);
+                        require_once __DIR__ . '/includes/whatsapp_helper.php';
+                        $waResult = send_whatsapp_order_bot_notification($oid, $orderNumber, $name, $phone, $orderTotal, $orderLines, (float)$shippingCost);
+                        $_SESSION['last_wa_url'] = $waResult['fallback_wa_url'] ?? contact_whatsapp_url(1);
+                    } catch (Throwable $we) {
+                        $_SESSION['last_wa_url'] = contact_whatsapp_url(1);
+                    }
 
                     $_SESSION['cart'] = [];
                     header('Location: ' . url('order_success.php?id=' . $oid));
@@ -381,7 +390,7 @@ require __DIR__ . '/includes/header.php';
                         $pdo->rollBack();
                     }
                     error_log('Error in checkout.php order submission: ' . $e->getMessage());
-                    $errors[] = current_lang() === 'ar' ? 'حدث خطأ أثناء حفظ الطلب. يرجى المحاولة مرة أخرى.' : 'An error occurred while saving the order. Please try again.';
+                    $errors[] = (current_lang() === 'ar' ? 'حدث خطأ: ' : 'Error: ') . $e->getMessage();
                 }
             } else {
                 $errors[] = 'Orders require the database. Import schema and run migrate.php.';
