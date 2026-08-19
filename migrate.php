@@ -155,6 +155,10 @@ try {
         'whatsapp_bot_url' => ['http://127.0.0.1:3001', 'http://127.0.0.1:3001'],
         'whatsapp_bot_enabled' => ['1', '1'],
         'whatsapp_bot_phone' => ['201111026600', '201111026600'],
+        'women_category_cart_message' => [
+            '🌸 Reminder: Perfume is permissible for women at home and commendable to please her husband, but prohibited when going out in public with the intention that non-mahram men smell it.',
+            '🌸 تذكرة طيبة: يُباح التعطرُ للنساء داخل المنزل، وهو مُستحبّ إذا كان بهدف إدخال السرور على قلب زوجها، ولكنّه يصبح مُحرماً في حالة التعطر والخروج بقصد أن يشمَّه الرجال الأجانب، وتُؤثم المرأة التي تفعل ذلك، لأنّ في عطرها فتنة للرجال. بنذكر بعض بس 🌸'
+        ],
     ];
 
     foreach ($settingsDefaults as $key => [$valEn, $valAr]) {

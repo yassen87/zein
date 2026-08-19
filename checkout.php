@@ -470,6 +470,22 @@ foreach ($_SESSION['cart'] ?? [] as $lineKey => $qty) {
     }
 }
 
+// Detect if there are women perfumes in cart
+$hasWomenProductInCart = false;
+foreach ($lines as $ln) {
+    $pId = (int)($ln['product_id'] ?? 0);
+    if ($pId > 0) {
+        $pData = get_product_by_id($pId);
+        if ($pData) {
+            $pCats = $pData['categories'] ?? [$pData['category'] ?? ''];
+            if (in_array('women', $pCats, true) || str_contains(strtolower((string)($pData['category'] ?? '')), 'women')) {
+                $hasWomenProductInCart = true;
+                break;
+            }
+        }
+    }
+}
+
 $extraCss = [
     url('assets/css/pages/checkout.css?v=' . filemtime(__DIR__ . '/assets/css/pages/checkout.css'))
 ];
@@ -524,6 +540,22 @@ require __DIR__ . '/includes/header.php';
                             <?php endforeach; ?>
                         </ul>
                     </div>
+                <?php endif; ?>
+
+                <?php if ($hasWomenProductInCart): ?>
+                <!-- Women Product Reminder on Checkout -->
+                <div class="women-checkout-reminder" style="margin-bottom: 1.5rem; background: linear-gradient(135deg, rgba(212, 175, 55, 0.10), rgba(255, 248, 240, 0.98)); border: 1px solid rgba(212, 175, 55, 0.35); border-radius: 14px; padding: 1.15rem 1.35rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); text-align: right;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem;">
+                        <span style="font-size: 1.25rem;">🌸</span>
+                        <strong style="color: #855d14; font-size: 0.98rem; font-weight: 700;">تذكرة طيبة من متجر زين:</strong>
+                    </div>
+                    <p style="margin: 0; font-size: 0.90rem; line-height: 1.7; color: #4a3b22; font-weight: 500;">
+                        يُباح التعطرُ للنساء داخل المنزل، وهو مُستحبّ إذا كان بهدف إدخال السرور على قلب زوجها، ولكنّه يصبح مُحرماً في حالة التعطر والخروج بقصد أن يشمَّه الرجال الأجانب، وتُؤثم المرأة التي تفعل ذلك، لأنّ في عطرها فتنة للرجال.
+                    </p>
+                    <div style="margin-top: 0.4rem; font-size: 0.82rem; color: #855d14; font-weight: 600; text-align: left;">
+                        بنذكر بعض بس 🌸✨
+                    </div>
+                </div>
                 <?php endif; ?>
 
                 <!-- Form Container -->
