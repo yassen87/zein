@@ -322,15 +322,18 @@ _(يرجى الرد برقم 1 أو 2 أو 3 للمتابعة)_`;
 
             let order = null;
 
-            if (stateObj && stateObj.orderId) {
-                order = await db.findOrderByNumber(stateObj.orderId);
-            }
-
             // Check if user's text contains an explicit order number (e.g. from website fallback link or manual query)
             const orderRefMatch = rawBody.match(/MED-[A-Z0-9]{6,14}/i) || rawBody.match(/#(\d{1,8})/);
-            if (!order && orderRefMatch) {
+            if (orderRefMatch) {
                 const matchedRef = orderRefMatch[0].replace('#', '').trim();
-                order = await db.findOrderByNumber(matchedRef);
+                const matchedOrder = await db.findOrderByNumber(matchedRef);
+                if (matchedOrder) {
+                    order = matchedOrder;
+                }
+            }
+
+            if (!order && stateObj && stateObj.orderId) {
+                order = await db.findOrderByNumber(stateObj.orderId);
             }
 
             if (!order && realNumber) {
@@ -369,14 +372,31 @@ _(يرجى الرد برقم 1 أو 2 أو 3 للمتابعة)_`;
                 return;
             }
 
-            if (order && !stateObj) {
+            // Multiple Orders Support: if customer has more than 1 pending order and didn't specify which one
+            const isMenuChoice = (body === '1' || body === '١' || body === '2' || body === '٢' || body === '3' || body === '٣' || body.includes('تأكيد') || body.includes('تاكيد'));
+            if (!orderRefMatch && realNumber && (!stateObj || stateObj.state === 'menu')) {
+                const pendingOrders = await db.findPendingOrdersByPhone(realNumber);
+                if (pendingOrders.length > 1 && isMenuChoice) {
+                    let multiMsg = `🌸 *أهلاً بك يا أ/ ${pendingOrders[0].customer_name} في متجر زين للعطور* 🌸\n\n`;
+                    multiMsg += `يوجد لديك *${pendingOrders.length} طلبات معلقة* مسجلة برقمك:\n`;
+                    for (const po of pendingOrders) {
+                        multiMsg += `▫️ طلب رقم: *${po.order_number}* (المبلغ: *${parseFloat(po.total || 0).toFixed(2)} ج.م*)\n`;
+                    }
+                    multiMsg += `─────────────────────\n`;
+                    multiMsg += `لتأكيد أو دفع أي طلب، يرجى كتابة رقم الطلب المطلوب (مثال: *${pendingOrders[0].order_number}*) أو إرسال صورة إيصال التحويل مباشرة. 🌸`;
+                    await msg.reply(multiMsg);
+                    return;
+                }
+            }
+
+            if (order) {
                 stateObj = {
                     orderId: order.id,
                     orderNumber: order.order_number,
                     customerName: order.customer_name,
                     total: parseFloat(order.total || 0).toFixed(2),
                     shippingCost: parseFloat(order.shipping_cost || 0).toFixed(2),
-                    state: order.bot_step || 'menu'
+                    state: order.bot_step || (stateObj?.state || 'menu')
                 };
                 if (digitsKeyFromReal) this.userStates.set(digitsKeyFromReal, stateObj);
                 if (digitsKeyFromSender) this.userStates.set(digitsKeyFromSender, stateObj);
@@ -428,7 +448,7 @@ _(يرجى الرد برقم 1 أو 2 أو 3 للمتابعة)_`;
                     this.log('warn', `Media data was empty, recorded receipt marker: ${filename}`);
                 }
 
-                // Update database: receipt saved, status pending verification
+                // Update database: receipt saved in pending verification (is_confirmed remains 0 until staff confirms)
                 if (order?.id) {
                     await db.saveOrderReceipt(order.id, filename);
                 }
@@ -469,9 +489,9 @@ _(يرجى الرد برقم 1 أو 2 أو 3 للمتابعة)_`;
             // ── SUB-STEP: Customer Choosing Payment Scope (Shipping Only vs Full Amount) ──
             if (stateObj?.state === 'awaiting_scope_choice') {
                 if (isShippingOnly) {
-                    // Option 1: Shipping Cost Only
+                    // Option 1: Shipping Cost Only — is_confirmed remains 0 until actual payment
                     if (order?.id) {
-                        await db.updateOrderConfirmation(order.id, true, 'shipping_only', 'awaiting_receipt', shippingCostNum, parseFloat(remainingForShippingOnly));
+                        await db.updateOrderConfirmation(order.id, 0, 'shipping_only', 'awaiting_receipt', shippingCostNum, parseFloat(remainingForShippingOnly));
                     }
                     if (stateObj) {
                         stateObj.state = 'awaiting_receipt';
@@ -498,9 +518,9 @@ _(يرجى الرد برقم 1 أو 2 أو 3 للمتابعة)_`;
                     await msg.reply(shippingPayMsg);
                     return;
                 } else if (isFullAmount) {
-                    // Option 2: Full Order Amount
+                    // Option 2: Full Order Amount — is_confirmed remains 0 until actual payment
                     if (order?.id) {
-                        await db.updateOrderConfirmation(order.id, true, 'full', 'awaiting_receipt', totalNum, 0);
+                        await db.updateOrderConfirmation(order.id, 0, 'full', 'awaiting_receipt', totalNum, 0);
                     }
                     if (stateObj) {
                         stateObj.state = 'awaiting_receipt';
@@ -532,7 +552,7 @@ _(يرجى الرد برقم 1 أو 2 أو 3 للمتابعة)_`;
             // ── STEP 1: INITIAL CONFIRMATION SELECTION (Choice 1) ──
             if (is1 && stateObj?.state !== 'awaiting_scope_choice') {
                 if (order?.id) {
-                    await db.updateOrderConfirmation(order.id, true, 'full', 'awaiting_scope_choice', 0, 0);
+                    await db.updateOrderConfirmation(order.id, 0, 'full', 'awaiting_scope_choice', 0, 0);
                 }
                 if (stateObj) stateObj.state = 'awaiting_scope_choice';
                 if (digitsKeyFromReal) this.userStates.set(digitsKeyFromReal, { ...stateObj, state: 'awaiting_scope_choice' });

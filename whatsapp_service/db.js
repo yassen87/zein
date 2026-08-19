@@ -100,7 +100,7 @@ async function getSettings() {
 }
 
 /**
- * Find order by phone with smart matching
+ * Find order by phone with smart matching (latest pending/active preferred)
  */
 async function findLatestOrderByPhone(phone) {
     if (!phone) return null;
@@ -111,7 +111,18 @@ async function findLatestOrderByPhone(phone) {
         const last8 = digits.slice(-8);
         const last9 = digits.slice(-9);
 
-        const rows = await query(
+        // First try to find a pending/unconfirmed order
+        let rows = await query(
+            `SELECT * FROM orders 
+             WHERE (customer_phone LIKE ? OR customer_phone LIKE ? OR REPLACE(REPLACE(customer_phone, ' ', ''), '+', '') LIKE ?)
+               AND status NOT IN ('cancelled', 'delivered')
+             ORDER BY id DESC LIMIT 1`,
+            [`%${last8}%`, `%${last9}%`, `%${last8}%`]
+        );
+        if (rows.length > 0) return rows[0];
+
+        // If none pending, return the latest order overall
+        rows = await query(
             `SELECT * FROM orders 
              WHERE customer_phone LIKE ? 
                 OR customer_phone LIKE ? 
@@ -123,6 +134,32 @@ async function findLatestOrderByPhone(phone) {
     } catch (e) {
         console.error('[DB] findLatestOrderByPhone error:', e.message);
         return null;
+    }
+}
+
+/**
+ * Find all active pending orders for a phone number
+ */
+async function findPendingOrdersByPhone(phone) {
+    if (!phone) return [];
+    try {
+        const digits = phone.replace(/\D/g, '');
+        if (digits.length < 5) return [];
+
+        const last8 = digits.slice(-8);
+        const last9 = digits.slice(-9);
+
+        const rows = await query(
+            `SELECT * FROM orders 
+             WHERE (customer_phone LIKE ? OR customer_phone LIKE ? OR REPLACE(REPLACE(customer_phone, ' ', ''), '+', '') LIKE ?)
+               AND status NOT IN ('cancelled', 'delivered')
+             ORDER BY id DESC LIMIT 5`,
+            [`%${last8}%`, `%${last9}%`, `%${last8}%`]
+        );
+        return rows || [];
+    } catch (e) {
+        console.error('[DB] findPendingOrdersByPhone error:', e.message);
+        return [];
     }
 }
 
@@ -163,7 +200,7 @@ async function findOrderByNumber(orderNumber) {
 /**
  * Update order confirmation status and payment scope
  */
-async function updateOrderConfirmation(orderId, isConfirmed, paymentScope = 'full', botStep = 'awaiting_receipt', advanceAmount = 0, remainingAmount = 0) {
+async function updateOrderConfirmation(orderId, isConfirmed = 0, paymentScope = 'full', botStep = 'awaiting_receipt', advanceAmount = 0, remainingAmount = 0) {
     try {
         const sql = `UPDATE orders SET 
             is_confirmed = ?, 
@@ -171,8 +208,7 @@ async function updateOrderConfirmation(orderId, isConfirmed, paymentScope = 'ful
             payment_scope = ?, 
             payment_method = 'instapay_wallet',
             advance_amount = ?, 
-            remaining_amount = ?, 
-            confirmed_at = COALESCE(confirmed_at, NOW()) 
+            remaining_amount = ?
             WHERE id = ?`;
         return await query(sql, [isConfirmed ? 1 : 0, botStep, paymentScope, advanceAmount, remainingAmount, orderId]);
     } catch (e) {
@@ -190,9 +226,7 @@ async function saveOrderReceipt(orderId, filename) {
                 `UPDATE orders SET 
                     payment_receipt = ?, 
                     payment_status = 'pending_verification', 
-                    is_confirmed = 1,
-                    bot_step = 'receipt_received',
-                    confirmed_at = COALESCE(confirmed_at, NOW()) 
+                    bot_step = 'receipt_received'
                  WHERE id = ?`,
                 [filename, orderId]
             );
