@@ -20,7 +20,9 @@ get_csrf_token();
 require_once __DIR__ . '/locale.php';
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/mail_helper.php';
+require_once __DIR__ . '/maintenance_helper.php';
 locale_bootstrap();
+check_and_enforce_maintenance();
 
 define('SITE_NAME', t('site_name'));
 

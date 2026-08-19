@@ -139,6 +139,13 @@ unset($_SESSION['women_category_cart_alert']);
 <body class="<?= esc($bodyClass) ?>">
     <a class="skip-link" href="#main"><?= esc(t('skip_content')) ?></a>
 
+    <?php if (!empty($GLOBALS['is_maintenance_admin_bypass'])): ?>
+        <div style="background: linear-gradient(135deg, #78350f 0%, #b45309 100%); color: #fef3c7; padding: 0.6rem 1rem; text-align: center; font-size: 0.88rem; font-weight: 700; border-bottom: 2px solid #f59e0b; position: relative; z-index: 9999;">
+            🔒 <?= $isAr ? 'وضع الصيانة مُفعل حالياً (المتجر مغلق أمام الزوار، وأنت تتصفح كمسؤول/مطور)' : 'Maintenance Mode is ACTIVE (Store is locked to visitors, you have admin bypass)' ?>
+            · <a href="/admin/developer_hub.php" style="color: #ffffff; text-decoration: underline; margin-right: 8px;"><?= $isAr ? 'لوحة تحكم المطورين ⚡' : 'Developer Hub ⚡' ?></a>
+        </div>
+    <?php endif; ?>
+
     <div id="screen-toast-container" class="screen-toast-container" aria-live="polite" aria-atomic="true">
         <?php if (!empty($womenCategoryToast)): ?>
             <div class="screen-toast" role="status">
