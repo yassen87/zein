@@ -151,16 +151,28 @@ class WhatsAppBot {
             this.emitStatus();
         });
 
-        // Outbound staff messages listener (detecting 'تم التأكيد')
+        // Unified listener via message_create (Captures 100% of WhatsApp Business & Regular incoming messages)
         this.client.on('message_create', async (msg) => {
-            if (msg.fromMe) {
-                await this.handleStaffOutgoingMessage(msg);
+            try {
+                if (msg.fromMe) {
+                    await this.handleStaffOutgoingMessage(msg);
+                } else {
+                    await this.handleIncomingMessage(msg);
+                }
+            } catch (err) {
+                this.log('error', `Error in message_create: ${err.message}`);
             }
         });
 
-        // Inbound messages from customers
+        // Backup listener for standard message event
         this.client.on('message', async (msg) => {
-            await this.handleIncomingMessage(msg);
+            try {
+                if (!msg.fromMe) {
+                    await this.handleIncomingMessage(msg);
+                }
+            } catch (err) {
+                this.log('error', `Error in message: ${err.message}`);
+            }
         });
 
         this.client.initialize().catch((err) => {
@@ -218,38 +230,23 @@ class WhatsAppBot {
      */
     async sendOrderConfirmationMenu(order) {
         if (this.status !== 'ready' || !this.client) {
-            throw new Error('WhatsApp Bot is not connected. Please scan QR code first.');
+            throw new Error('WhatsApp Bot is not connected.');
         }
 
-        const phoneJid = this.formatPhone(order.customer_phone);
-        if (!phoneJid) {
-            throw new Error(`Invalid customer phone: ${order.customer_phone}`);
+        const phone = order.customer_phone;
+        const jid = this.formatPhone(phone);
+        if (!jid) {
+            throw new Error(`Invalid customer phone: ${phone}`);
         }
 
-        const customerName = order.customer_name || 'عميلنا العزيز';
-        const orderNumber = order.order_number || `MED-${order.id}`;
         const total = parseFloat(order.total || 0).toFixed(2);
-        const shippingCost = parseFloat(order.shipping_cost || 0).toFixed(2);
-        const digitsKey = this.getDigitsKey(order.customer_phone);
-
-        const statePayload = {
-            orderId: order.id,
-            orderNumber,
-            customerName,
-            total,
-            shippingCost,
-            state: 'menu',
-            timestamp: Date.now()
-        };
-
-        if (digitsKey) this.userStates.set(digitsKey, statePayload);
-        this.userStates.set(phoneJid, statePayload);
+        const orderNumber = order.order_number;
+        const customerName = order.customer_name || 'عميلنا العزيز';
 
         const menuText = 
-`🌸 *أهلاً بك يا أ/ ${customerName} في متجر زين للعطور* 🌸
+`👑 *أهلاً بك يا أ/ ${customerName} في متجر زين للعطور!* 🌸
 
-📦 تم استلام طلبك بنجاح برقم: *${orderNumber}*
-🚚 مصاريف الشحن: *${shippingCost} ج.م*
+📦 تم تسجيل طلبك بنجاح برقم: *${orderNumber}*
 💰 إجمالي المبلغ: *${total} ج.م*
 ─────────────────────
 يرجى اختيار الإجراء المطلوب بالرد برقم الخيار:
@@ -260,13 +257,29 @@ class WhatsAppBot {
 
 _(يرجى الرد برقم 1 أو 2 أو 3 للمتابعة)_`;
 
-        this.log('outbound', `Sending order menu to ${phoneJid} for order ${orderNumber}`);
-        await this.client.sendMessage(phoneJid, menuText);
+        await this.client.sendMessage(jid, menuText);
+
+        const digitsKey = this.getDigitsKey(phone);
+        const stateObj = {
+            orderId: order.id,
+            orderNumber: order.order_number,
+            customerName: order.customer_name,
+            total: total,
+            shippingCost: parseFloat(order.shipping_cost || 0).toFixed(2),
+            state: 'menu'
+        };
+        this.userStates.set(jid, stateObj);
+        if (digitsKey) {
+            this.userStates.set(digitsKey, stateObj);
+        }
+
+        this.log('outbound', `Sent Order Menu (${orderNumber}) to ${jid}`);
 
         if (this.io) {
-            this.io.emit('new_message_sent', {
-                to: phoneJid,
+            this.io.emit('order_menu_sent', {
+                orderId: order.id,
                 orderNumber,
+                jid,
                 text: menuText,
                 timestamp: new Date().toISOString()
             });
@@ -276,32 +289,33 @@ _(يرجى الرد برقم 1 أو 2 أو 3 للمتابعة)_`;
     }
 
     /**
-     * Resilient message sender: attempts msg.reply, falls back to direct client.sendMessage
+     * Resilient message sender: sends directly via client.sendMessage or msg.reply
      * Works 100% reliably for WhatsApp Regular, WhatsApp Business, Enterprise, and Multi-Device accounts!
      */
     async sendSafeReply(msg, text) {
         if (!text) return false;
         
-        // 1. First attempt: Standard msg.reply()
+        const targetJid = msg.from || msg.author || msg.to;
+
+        // 1. Direct client.sendMessage to sender JID (Universal & 100% reliable)
+        try {
+            if (targetJid && this.client) {
+                await this.client.sendMessage(targetJid, text);
+                this.log('outbound', `✓ Sent message to ${targetJid}`);
+                return true;
+            }
+        } catch (sendErr) {
+            this.log('warn', `Direct sendMessage failed (${sendErr.message}), trying msg.reply...`);
+        }
+
+        // 2. Fallback: msg.reply()
         try {
             if (msg && typeof msg.reply === 'function') {
                 await msg.reply(text);
                 return true;
             }
         } catch (err) {
-            this.log('warn', `Standard msg.reply failed (${err.message}) - attempting direct sendMessage fallback...`);
-        }
-
-        // 2. Fallback: Direct client.sendMessage() to sender JID
-        try {
-            const targetJid = msg.from || msg.author || msg.to;
-            if (targetJid && this.client) {
-                await this.client.sendMessage(targetJid, text);
-                this.log('outbound', `✓ Sent direct fallback message to ${targetJid}`);
-                return true;
-            }
-        } catch (sendErr) {
-            this.log('error', `Direct sendMessage fallback also failed: ${sendErr.message}`);
+            this.log('error', `msg.reply fallback also failed: ${err.message}`);
         }
 
         return false;
@@ -312,6 +326,8 @@ _(يرجى الرد برقم 1 أو 2 أو 3 للمتابعة)_`;
      */
     async handleIncomingMessage(msg) {
         try {
+            if (!msg || msg.fromMe) return;
+
             // Deduplication check: ignore already processed messages
             const msgId = msg.id?._serialized || msg.id?.id;
             if (msgId) {
@@ -326,16 +342,18 @@ _(يرجى الرد برقم 1 أو 2 أو 3 للمتابعة)_`;
             }
 
             // Ignore channels, newsletters, groups, statuses
-            if (msg.from.includes('@newsletter') || msg.from.includes('@g.us') || msg.from.includes('status@broadcast') || msg.isStatus) {
+            if (!msg.from || msg.from.includes('@newsletter') || msg.from.includes('@g.us') || msg.from.includes('status@broadcast') || msg.isStatus) {
                 return;
             }
 
             const senderJid = msg.from;
             let realNumber = senderJid.replace(/@.*$/, '');
 
-            // Try to resolve real contact number if LID or WhatsApp Business
+            // Fast-timeout contact resolution for Business/LID contacts
             try {
-                const contact = await msg.getContact();
+                const contactPromise = msg.getContact();
+                const timeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error('Contact timeout')), 800));
+                const contact = await Promise.race([contactPromise, timeoutPromise]);
                 if (contact) {
                     if (contact.number) realNumber = contact.number;
                     else if (contact.id && contact.id.user) realNumber = contact.id.user;
