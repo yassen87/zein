@@ -155,8 +155,8 @@ async function findLatestOrderByPhone(phone) {
             if (digits === oDigits || digits.endsWith(oDigits) || oDigits.endsWith(digits)) {
                 return o;
             }
-            if (digits.length >= 8 && oDigits.length >= 8) {
-                if (digits.slice(-8) === oDigits.slice(-8)) return o;
+            if (digits.length >= 7 && oDigits.length >= 7) {
+                if (digits.slice(-7) === oDigits.slice(-7)) return o;
             }
         }
 

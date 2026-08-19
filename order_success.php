@@ -15,13 +15,7 @@ if ($pdo && $id > 0) {
     $order = $st->fetch();
 
     if ($order) {
-        $itSt = $pdo->prepare('
-            SELECT oi.*, p.main_image, p.image 
-            FROM order_items oi 
-            LEFT JOIN products p ON oi.product_id = p.id 
-            WHERE oi.order_id = ? 
-            ORDER BY oi.id ASC
-        ');
+        $itSt = $pdo->prepare('SELECT * FROM order_items WHERE order_id = ? ORDER BY id ASC');
         $itSt->execute([$id]);
         $orderItems = $itSt->fetchAll();
     }
@@ -289,17 +283,9 @@ require __DIR__ . '/includes/header.php';
                     
                     <div style="border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; background: #fafafa;">
                         <?php foreach ($orderItems as $item): ?>
-                            <?php 
-                                $imgFile = !empty($item['main_image']) ? $item['main_image'] : (!empty($item['image']) ? $item['image'] : '');
-                                $imgUrl = !empty($imgFile) ? url('assets/images/products/' . $imgFile) : '';
-                            ?>
                             <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; border-bottom: 1px solid #f1f5f9; background: #ffffff; gap: 1rem;">
                                 <div style="display: flex; align-items: center; gap: 12px;">
-                                    <?php if (!empty($imgUrl)): ?>
-                                        <img src="<?= esc($imgUrl) ?>" alt="<?= esc((string)$item['product_name_snapshot']) ?>" class="product-thumb-img" onerror="this.style.display='none'">
-                                    <?php else: ?>
-                                        <div style="width: 50px; height: 50px; border-radius: 10px; background: rgba(212,175,55,0.1); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">🧴</div>
-                                    <?php endif; ?>
+                                    <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(212,175,55,0.12); border: 1px solid rgba(212,175,55,0.25); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">🧴</div>
                                     <div>
                                         <strong style="color: #0f172a; font-size: 1rem; display: block;"><?= esc((string)$item['product_name_snapshot']) ?></strong>
                                         <?php if (!empty($item['variant_label_snapshot'])): ?>
