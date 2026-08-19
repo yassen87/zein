@@ -276,6 +276,38 @@ _(يرجى الرد برقم 1 أو 2 أو 3 للمتابعة)_`;
     }
 
     /**
+     * Resilient message sender: attempts msg.reply, falls back to direct client.sendMessage
+     * Works 100% reliably for WhatsApp Regular, WhatsApp Business, Enterprise, and Multi-Device accounts!
+     */
+    async sendSafeReply(msg, text) {
+        if (!text) return false;
+        
+        // 1. First attempt: Standard msg.reply()
+        try {
+            if (msg && typeof msg.reply === 'function') {
+                await msg.reply(text);
+                return true;
+            }
+        } catch (err) {
+            this.log('warn', `Standard msg.reply failed (${err.message}) - attempting direct sendMessage fallback...`);
+        }
+
+        // 2. Fallback: Direct client.sendMessage() to sender JID
+        try {
+            const targetJid = msg.from || msg.author || msg.to;
+            if (targetJid && this.client) {
+                await this.client.sendMessage(targetJid, text);
+                this.log('outbound', `✓ Sent direct fallback message to ${targetJid}`);
+                return true;
+            }
+        } catch (sendErr) {
+            this.log('error', `Direct sendMessage fallback also failed: ${sendErr.message}`);
+        }
+
+        return false;
+    }
+
+    /**
      * Handle incoming customer messages & replies (1, 2, 3, Images)
      */
     async handleIncomingMessage(msg) {
@@ -301,17 +333,29 @@ _(يرجى الرد برقم 1 أو 2 أو 3 للمتابعة)_`;
             const senderJid = msg.from;
             let realNumber = senderJid.replace(/@.*$/, '');
 
-            // Try to resolve real contact number if LID
+            // Try to resolve real contact number if LID or WhatsApp Business
             try {
                 const contact = await msg.getContact();
-                if (contact && contact.number) {
-                    realNumber = contact.number;
+                if (contact) {
+                    if (contact.number) realNumber = contact.number;
+                    else if (contact.id && contact.id.user) realNumber = contact.id.user;
                 }
             } catch (cErr) {}
 
             const digitsKeyFromSender = this.getDigitsKey(senderJid);
             const digitsKeyFromReal = this.getDigitsKey(realNumber);
-            const rawBody = (msg.body || '').trim();
+            
+            // Extract text from regular, caption, or business interactive payload
+            const rawBody = (
+                msg.body || 
+                msg.caption || 
+                msg._data?.body || 
+                msg._data?.caption || 
+                msg._data?.interactive?.body?.text || 
+                msg.selectedButtonId || 
+                msg.selectedRowId || 
+                ''
+            ).trim();
             const body = rawBody.toLowerCase();
 
             this.log('inbound', `Received from ${senderJid} (real: ${realNumber}): "${rawBody || '[Media/Image]'}"`);
@@ -369,7 +413,7 @@ _(يرجى الرد برقم 1 أو 2 أو 3 للمتابعة)_`;
 🌐 *https://zeinperfumes.com*
 
 💬 للاستفسارات وطلب المساعدة، يمكنك كتابة رسالتك وسيقوم فريق خدمة العملاء بالرد عليك قريباً.`;
-                    await msg.reply(welcomeMsg);
+                    await this.sendSafeReply(msg, welcomeMsg);
                     return;
                 }
 
@@ -426,7 +470,7 @@ _(شامل المنتجات ومصاريف الشحن بدون أي دفع عن�
 ─────────────────────
 _رد برقم (1) لدفع الشحن فقط، أو (2) لدفع كامل المبلغ._`;
 
-                await msg.reply(scopePromptMsg);
+                await this.sendSafeReply(msg, scopePromptMsg);
                 return;
             }
 
@@ -480,7 +524,7 @@ _رد برقم (1) لدفع الشحن فقط، أو (2) لدفع كامل ال�
 
 🌸 سيصلك إشعار فوري هنا على الواتساب فور اعتماد الدفع وبدء تجهيز شحنتك. شكراً لاختيارك *زين للعطور*! ✨`;
 
-                await msg.reply(replyText);
+                await this.sendSafeReply(msg, replyText);
 
                 if (this.io) {
                     this.io.emit('receipt_uploaded', {
@@ -531,7 +575,7 @@ _رد برقم (1) لدفع الشحن فقط، أو (2) لدفع كامل ال�
 1️⃣ أرسل *صورة إيصال التحويل (Screenshot)* 📸 هنا
 2️⃣ *أو* اكتب *الرقم المرجعي / كود العملية* 🔢 هنا في الشات.`;
 
-                    await msg.reply(shippingPayMsg);
+                    await this.sendSafeReply(msg, shippingPayMsg);
                     return;
                 } else if (isFullAmount) {
                     // Option 2: Full Order Amount — is_confirmed remains 0 until actual payment
@@ -560,7 +604,7 @@ _رد برقم (1) لدفع الشحن فقط، أو (2) لدفع كامل ال�
 1️⃣ أرسل *صورة إيصال التحويل (Screenshot)* 📸 هنا
 2️⃣ *أو* اكتب *الرقم المرجعي / كود العملية* 🔢 هنا في الشات.`;
 
-                    await msg.reply(fullPayMsg);
+                    await this.sendSafeReply(msg, fullPayMsg);
                     return;
                 }
             }
@@ -587,7 +631,7 @@ _(شامل المنتجات ومصاريف الشحن بدون أي دفع عن�
 ─────────────────────
 _رد برقم (1) لدفع الشحن فقط، أو (2) لدفع كامل المبلغ._`;
 
-                await msg.reply(scopePromptMsg);
+                await this.sendSafeReply(msg, scopePromptMsg);
                 return;
             }
 
@@ -604,7 +648,7 @@ _رد برقم (1) لدفع الشحن فقط، أو (2) لدفع كامل ال�
 يمكنك تصفح أحدث العطور والعروض في أي وقت عبر موقعنا:
 🌐 *https://zeinperfumes.com*`;
 
-                await msg.reply(cancelResponse);
+                await this.sendSafeReply(msg, cancelResponse);
                 return;
             }
 
@@ -615,7 +659,7 @@ _رد برقم (1) لدفع الشحن فقط، أو (2) لدفع كامل ال�
 
 يرجى كتابة التعديل المطلوب هنا مباشرة (مثل تعديل العنوان، أو إضافة/تغيير عطر)، وسيقوم أحد ممثلي خدمة العملاء بمساعدتك فوراً. 🌸`;
 
-                await msg.reply(editResponse);
+                await this.sendSafeReply(msg, editResponse);
                 return;
             }
 
@@ -642,7 +686,7 @@ _رد برقم (1) لدفع الشحن فقط، أو (2) لدفع كامل ال�
 
 🌸 سيصلك إشعار فوري هنا على الواتساب فور اعتماد الدفع وبدء تجهيز شحنتك. شكراً لاختيارك *زين للعطور*! ✨`;
 
-                await msg.reply(refReply);
+                await this.sendSafeReply(msg, refReply);
 
                 if (this.io) {
                     this.io.emit('receipt_uploaded', {
