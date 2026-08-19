@@ -223,25 +223,25 @@ require __DIR__ . '/includes/header.php';
             $pdo = medal_pdo();
             if ($pdo !== null) {
                 try {
-                    if (!isset($_SESSION['_migrated_orders_schema'])) {
-                        try {
-                            $pdo->exec("ALTER TABLE orders ADD COLUMN IF NOT EXISTS confirmation_code VARCHAR(16) NULL");
-                            $pdo->exec("ALTER TABLE orders ADD COLUMN IF NOT EXISTS is_confirmed TINYINT(1) NOT NULL DEFAULT 0");
-                            $pdo->exec("ALTER TABLE orders ADD COLUMN IF NOT EXISTS bot_step VARCHAR(32) NOT NULL DEFAULT 'initial'");
-                            $pdo->exec("ALTER TABLE orders ADD COLUMN IF NOT EXISTS confirmed_at DATETIME NULL");
-                            $pdo->exec("ALTER TABLE orders ADD COLUMN IF NOT EXISTS wa_conf_sent TINYINT(1) NOT NULL DEFAULT 0");
-                            $pdo->exec("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method VARCHAR(32) NOT NULL DEFAULT 'cod'");
-                            $pdo->exec("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status VARCHAR(32) NOT NULL DEFAULT 'unpaid'");
-                            $pdo->exec("ALTER TABLE orders ADD COLUMN IF NOT EXISTS paid_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00");
-                            $pdo->exec("ALTER TABLE orders ADD COLUMN IF NOT EXISTS waived_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00");
-                            $pdo->exec("ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivered_at DATETIME NULL");
-                        } catch (Throwable $me) {}
-                        $_SESSION['_migrated_orders_schema'] = true;
-                    }
+                    try {
+                        $pdo->exec("ALTER TABLE orders MODIFY customer_email VARCHAR(255) NULL DEFAULT ''");
+                        $pdo->exec("ALTER TABLE orders ADD COLUMN IF NOT EXISTS confirmation_code VARCHAR(16) NULL");
+                        $pdo->exec("ALTER TABLE orders ADD COLUMN IF NOT EXISTS is_confirmed TINYINT(1) NOT NULL DEFAULT 0");
+                        $pdo->exec("ALTER TABLE orders ADD COLUMN IF NOT EXISTS bot_step VARCHAR(32) NOT NULL DEFAULT 'initial'");
+                        $pdo->exec("ALTER TABLE orders ADD COLUMN IF NOT EXISTS confirmed_at DATETIME NULL");
+                        $pdo->exec("ALTER TABLE orders ADD COLUMN IF NOT EXISTS wa_conf_sent TINYINT(1) NOT NULL DEFAULT 0");
+                        $pdo->exec("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method VARCHAR(32) NOT NULL DEFAULT 'cod'");
+                        $pdo->exec("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status VARCHAR(32) NOT NULL DEFAULT 'unpaid'");
+                        $pdo->exec("ALTER TABLE orders ADD COLUMN IF NOT EXISTS paid_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00");
+                        $pdo->exec("ALTER TABLE orders ADD COLUMN IF NOT EXISTS waived_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00");
+                        $pdo->exec("ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivered_at DATETIME NULL");
+                    } catch (Throwable $me) {}
 
                     $pdo->beginTransaction();
                     $orderNumber = 'MED-' . strtoupper(bin2hex(random_bytes(4)));
                     $confirmationCode = (string) random_int(1000, 9999);
+                    $emailToSave = $email !== '' ? $email : ($phone . '@guest.zeinperfumes.com');
+                    
                     $ins = $pdo->prepare(
                         'INSERT INTO orders (order_number, confirmation_code, status, customer_name, customer_email, customer_phone, shipping_address, address_landmark, city, admin_notes, promo_code, subtotal, discount_amount, shipping_cost, total, is_confirmed, bot_step)
                           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 0, \'initial\')'
@@ -251,7 +251,7 @@ require __DIR__ . '/includes/header.php';
                         $confirmationCode,
                         'pending',
                         $name,
-                        $email !== '' ? $email : null,
+                        $emailToSave,
                         $phone !== '' ? $phone : null,
                         $address,
                         $landmark !== '' ? $landmark : null,
