@@ -55,6 +55,7 @@ $htmlDir = is_rtl() ? 'rtl' : 'ltr';
             <div class="admin-nav-section__body" style="display:none">
                 <a href="<?= esc(admin_url('orders.php')) ?>">كل الطلبات</a>
                 <a href="<?= esc(admin_url('order_management.php')) ?>">طلب جديد</a>
+                <a href="<?= esc(admin_url('fintech_transfers.php')) ?>" style="color: #fbbf24; font-weight: 800;">⚡️ التحويلات والمطابقة الذكية</a>
                 <a href="<?= esc(admin_url('broadcast.php')) ?>" style="color: #10b981; font-weight: 700;">📢 بث إعلانات الواتساب</a>
                 <a href="<?= esc(admin_url('whatsapp_bot.php')) ?>" style="color: #25d366; font-weight: 700;">💬 بوت الواتساب والـ QR</a>
             </div>

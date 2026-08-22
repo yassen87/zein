@@ -85,6 +85,29 @@ function medal_ensure_orders_schema(PDO $pdo): void
         medal_ensure_column($pdo, 'order_items', 'variant_label_snapshot', 'VARCHAR(255) NULL');
         medal_ensure_column($pdo, 'order_items', 'variant_id', 'INT(10) UNSIGNED NULL');
 
+        medal_ensure_column($pdo, 'orders', 'payment_reference', 'VARCHAR(100) NULL');
+        medal_ensure_column($pdo, 'orders', 'payment_receipt', 'VARCHAR(255) NULL');
+        medal_ensure_column($pdo, 'orders', 'ocr_status', 'VARCHAR(50) NULL DEFAULT \'none\'');
+
+        // Ensure bank_transactions table
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `bank_transactions` (
+          `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          `provider` VARCHAR(50) NOT NULL DEFAULT 'unknown',
+          `amount` DECIMAL(10,2) NOT NULL,
+          `sender_number_or_handle` VARCHAR(100) NULL,
+          `reference_id` VARCHAR(100) NOT NULL,
+          `raw_message` TEXT NULL,
+          `status` ENUM('unmatched', 'matched', 'ignored', 'refunded') NOT NULL DEFAULT 'unmatched',
+          `matched_order_id` INT UNSIGNED NULL,
+          `received_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          `matched_at` DATETIME NULL,
+          `ocr_matched_at` DATETIME NULL,
+          `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE KEY `idx_ref_id` (`reference_id`),
+          KEY `idx_matched_order` (`matched_order_id`),
+          KEY `idx_status` (`status`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
         // Make customer_email nullable
         try {
             $pdo->exec("ALTER TABLE orders MODIFY customer_email VARCHAR(255) NULL DEFAULT ''");

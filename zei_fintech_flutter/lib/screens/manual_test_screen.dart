@@ -36,14 +36,23 @@ class _ManualTestScreenState extends State<ManualTestScreen> {
   }
 
   void _loadVodafoneSample() {
+    final randRef = 'VF${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
     _senderController.text = 'VF-Cash';
-    _smsController.text = 'تم استلام مبلغ 650.00 جنيه من رقم 01001234567. الرقم المرجعي للعملية هو 20260822998877.';
+    _smsController.text = 'تم استلام مبلغ 650.00 جنيه من رقم 01005250838. الرقم المرجعي للعملية هو $randRef.';
     _parse();
   }
 
   void _loadInstaPaySample() {
+    final randRef = 'IPA-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
     _senderController.text = 'InstaPay';
-    _smsController.text = 'تم استلام تحويل لحظي بمبلغ 450.00 ج.م من ahmed@instapay. الرقم المرجعي: IPA-88776655.';
+    _smsController.text = 'تم استلام تحويل لحظي بمبلغ 450.00 ج.م من ahmedfayoumy1@instapay. الرقم المرجعي: $randRef.';
+    _parse();
+  }
+
+  void _loadOrangeSample() {
+    final randRef = 'OR-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+    _senderController.text = 'OrangeCash';
+    _smsController.text = 'تم استلام مبلغ 300.00 جنيه من محفظة 01223344556. كود العملية: $randRef.';
     _parse();
   }
 
@@ -70,10 +79,10 @@ class _ManualTestScreenState extends State<ManualTestScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   onPressed: _loadVodafoneSample,
-                  child: const Text('نموذج فودافون كاش', style: TextStyle(fontSize: 12)),
+                  child: const Text('فودافون كاش', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               Expanded(
                 child: OutlinedButton(
                   style: OutlinedButton.styleFrom(
@@ -82,7 +91,19 @@ class _ManualTestScreenState extends State<ManualTestScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   onPressed: _loadInstaPaySample,
-                  child: const Text('نموذج إنستاباي', style: TextStyle(fontSize: 12)),
+                  child: const Text('إنستاباي IPN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFF97316),
+                    side: const BorderSide(color: Color(0xFFF97316)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: _loadOrangeSample,
+                  child: const Text('أورانج كاش', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
