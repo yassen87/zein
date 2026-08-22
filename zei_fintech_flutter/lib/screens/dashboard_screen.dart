@@ -197,17 +197,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             child: const Icon(Icons.sensors, color: Color(0xFF10B981), size: 24),
           ),
-          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 Text(
-                  'المستمع نشط ويستقبل الرسائل 🟢',
-                  style: TextStyle(color: Color(0xFF10B981), fontSize: 14, fontWeight: FontWeight.bold),
+                  _isListening ? 'المستمع نشط ويستقبل الرسائل 🟢' : 'المستمع متوقف 🔴',
+                  style: TextStyle(
+                    color: _isListening ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-                SizedBox(height: 4),
-                Text(
+                const SizedBox(height: 4),
+                const Text(
                   'يتم فحص رسائل فودافون كاش وإنستاباي تلقائياً ومطابقتها فوراً مع المتجر.',
                   style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 11, height: 1.4),
                 ),

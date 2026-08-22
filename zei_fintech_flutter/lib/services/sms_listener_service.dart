@@ -1,4 +1,4 @@
-import 'package:telephony/telephony.dart';
+import 'package:another_telephony/telephony.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'sms_parser.dart';
 import 'api_sync_service.dart';
@@ -21,10 +21,11 @@ class SmsListenerService {
 
   static Future<bool> requestPermissions() async {
     final smsStatus = await Permission.sms.request();
-    final phoneStatus = await Permission.phone.request();
-    final notifStatus = await Permission.notification.request();
+    await Permission.phone.request();
+    await Permission.notification.request();
 
-    return smsStatus.isGranted || await telephony.isSmsCapable;
+    final isCapable = (await telephony.isSmsCapable) ?? false;
+    return smsStatus.isGranted || isCapable;
   }
 
   static void startListening({Function(TransferTransaction)? onNewTransaction}) async {
@@ -41,7 +42,7 @@ class SmsListenerService {
           final address = message.address ?? '';
           final tx = SmsParser.parse(body, senderAddress: address);
           if (tx != null) {
-            final result = await ApiSyncService.syncTransaction(tx);
+            await ApiSyncService.syncTransaction(tx);
             if (onNewTransaction != null) {
               onNewTransaction(tx);
             }

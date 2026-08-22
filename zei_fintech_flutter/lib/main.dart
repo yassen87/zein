@@ -25,7 +25,6 @@ class ZeiFintechApp extends StatelessWidget {
           primary: Color(0xFFD4AF37),
           secondary: Color(0xFF10B981),
           surface: Color(0xFF111827),
-          background: Color(0xFF0B0F17),
         ),
         fontFamily: 'Roboto',
       ),
