@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/orders_screen.dart';
+import 'screens/server_chat_tester_screen.dart';
 import 'screens/manual_test_screen.dart';
 import 'screens/settings_screen.dart';
 
@@ -57,6 +58,7 @@ class _MainNavigationHolderState extends State<MainNavigationHolder> {
   final List<Widget> _screens = const [
     DashboardScreen(),
     OrdersScreen(),
+    ServerChatTesterScreen(),
     ManualTestScreen(),
     SettingsScreen(),
   ];
@@ -78,8 +80,8 @@ class _MainNavigationHolderState extends State<MainNavigationHolder> {
           backgroundColor: const Color(0xFF111827),
           selectedItemColor: const Color(0xFFD4AF37),
           unselectedItemColor: const Color(0xFF6B7280),
-          selectedFontSize: 12,
-          unselectedFontSize: 11,
+          selectedFontSize: 11,
+          unselectedFontSize: 10,
           type: BottomNavigationBarType.fixed,
           onTap: (index) => setState(() => _currentIndex = index),
           items: const [
@@ -92,6 +94,11 @@ class _MainNavigationHolderState extends State<MainNavigationHolder> {
               icon: Icon(Icons.shopping_bag_outlined),
               activeIcon: Icon(Icons.shopping_bag),
               label: 'الطلبات',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.chat_bubble_outline),
+              activeIcon: Icon(Icons.chat_bubble),
+              label: 'شات السيرفر',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.science_outlined),

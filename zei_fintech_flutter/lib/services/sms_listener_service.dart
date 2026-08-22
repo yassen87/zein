@@ -19,13 +19,39 @@ class SmsListenerService {
   static final Telephony telephony = Telephony.instance;
   static bool isListening = false;
 
-  static Future<bool> requestPermissions() async {
-    final smsStatus = await Permission.sms.request();
-    await Permission.phone.request();
-    await Permission.notification.request();
+  static Future<bool> checkPermissions() async {
+    final smsStatus = await Permission.sms.status;
+    final phoneStatus = await Permission.phone.status;
+    return smsStatus.isGranted && phoneStatus.isGranted;
+  }
 
-    final isCapable = (await telephony.isSmsCapable) ?? false;
-    return smsStatus.isGranted || isCapable;
+  static Future<bool> requestPermissions() async {
+    // 1. Request via permission_handler
+    Map<Permission, PermissionStatus> statuses = await [
+      Permission.sms,
+      Permission.phone,
+      Permission.notification,
+    ].request();
+
+    bool granted = statuses[Permission.sms]?.isGranted == true;
+
+    // 2. Fallback request via Telephony directly
+    if (!granted) {
+      try {
+        final telephonyGranted = await telephony.requestPhoneAndSmsPermissions;
+        if (telephonyGranted == true) {
+          granted = true;
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    return granted;
+  }
+
+  static Future<void> openSettings() async {
+    await openAppSettings();
   }
 
   static void startListening({Function(TransferTransaction)? onNewTransaction}) async {

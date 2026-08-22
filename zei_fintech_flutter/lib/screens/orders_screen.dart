@@ -14,6 +14,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
   bool _isLoading = true;
   String _selectedStatus = '';
   String _searchQuery = '';
+  String? _errorMessage;
+  String _endpointUsed = '';
   final _searchController = TextEditingController();
 
   @override
@@ -23,14 +25,19 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 
   Future<void> _loadOrders() async {
-    setState(() => _isLoading = true);
-    final orders = await OrdersService.fetchOrders(
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    final result = await OrdersService.fetchOrdersDetailed(
       status: _selectedStatus,
       query: _searchQuery,
     );
     if (mounted) {
       setState(() {
-        _orders = orders;
+        _orders = result.orders;
+        _errorMessage = result.errorMessage;
+        _endpointUsed = result.endpointUsed;
         _isLoading = false;
       });
     }
@@ -123,13 +130,52 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 ? const Center(child: CircularProgressIndicator(color: Color(0xFFD4AF37)))
                 : _orders.isEmpty
                     ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            Icon(Icons.inbox_outlined, size: 50, color: Color(0xFF4B5563)),
-                            SizedBox(height: 10),
-                            Text('لا توجد طلبات مطابقة', style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14)),
-                          ],
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                _errorMessage != null ? Icons.wifi_off : Icons.inbox_outlined,
+                                size: 50,
+                                color: _errorMessage != null ? const Color(0xFFEF4444) : const Color(0xFF4B5563),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                _errorMessage != null ? 'تعذر جلب الطلبات من السيرفر' : 'لا توجد طلبات مسجلة بهذه الفئة',
+                                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                                textAlign: TextAlign.center,
+                              ),
+                              if (_errorMessage != null) ...[
+                                const SizedBox(height: 8),
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF3B1D1D),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.3)),
+                                  ),
+                                  child: Text(
+                                    _errorMessage!,
+                                    style: const TextStyle(color: Color(0xFFFCA5A5), fontSize: 11),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 16),
+                              ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFD4AF37),
+                                  foregroundColor: const Color(0xFF111827),
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                                onPressed: _loadOrders,
+                                icon: const Icon(Icons.refresh, size: 16),
+                                label: const Text('إعادة المحاولة والتحديث', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                              ),
+                            ],
+                          ),
                         ),
                       )
                     : RefreshIndicator(
