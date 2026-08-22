@@ -290,15 +290,29 @@ require __DIR__ . '/includes/header.php';
                         </div>
 
                         <!-- Match Result Card -->
-                        <div id="scanResultCard" style="display: none; text-align: right; background: rgba(16,185,129,0.1); border: 1px solid #10b981; border-radius: 14px; padding: 1.25rem;">
-                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 0.75rem;">
-                                <span style="font-size: 1.8rem; color: #10b981;">✅</span>
+                        <div id="scanResultCard" style="display: none; text-align: right; background: rgba(17, 24, 39, 0.95); border: 2px solid #d4af37; border-radius: 16px; padding: 1.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.3);">
+                            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.75rem;">
+                                <span id="resultIcon" style="font-size: 2rem;">✅</span>
                                 <div>
-                                    <strong id="resultTitle" style="color: #10b981; font-size: 1.05rem; display: block;">تم اعتماد التحويل وتأكيد الطلب بنجاح!</strong>
-                                    <span id="resultSub" style="color: #cbd5e1; font-size: 0.85rem;">تم مطابقة الإيصال مع إشعار البنك وتأكيد حجز العطور.</span>
+                                    <strong id="resultTitle" style="color: #10b981; font-size: 1.15rem; display: block; font-weight: 800;">تم اعتماد التحويل وتأكيد الطلب بنجاح!</strong>
+                                    <span id="resultSub" style="color: #94a3b8; font-size: 0.88rem;">تم استخراج بيانات الإيصال بدقة عبر الذكاء الاصطناعي.</span>
                                 </div>
                             </div>
-                            <div id="resultDetails" style="font-size: 0.85rem; color: #94a3b8; background: rgba(0,0,0,0.25); padding: 0.75rem; border-radius: 10px; font-family: monospace;"></div>
+
+                            <!-- Extracted Data Table -->
+                            <div style="margin-bottom: 1rem;">
+                                <div style="font-size: 0.85rem; color: #d4af37; font-weight: 700; margin-bottom: 8px;">
+                                    🔍 البيانات المستخرجة من صورة التحويل (AI OCR Analysis):
+                                </div>
+                                <div id="extractedDataGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08); padding: 12px; border-radius: 12px;">
+                                    <!-- Dynamic rows inserted by JS -->
+                                </div>
+                            </div>
+
+                            <div id="reviewNoticeBox" style="background: rgba(212, 175, 55, 0.12); border: 1px solid rgba(212, 175, 55, 0.35); border-radius: 10px; padding: 10px 14px; font-size: 0.85rem; color: #fde047; display: flex; align-items: center; gap: 8px;">
+                                <span>⏳</span>
+                                <span id="reviewNoticeText">في انتظار مراجعة خدمة العملاء ومطابقة إشعار البنك فور وصوله.</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -335,9 +349,12 @@ require __DIR__ . '/includes/header.php';
                     const scanStatusText = document.getElementById('scanStatusText');
                     const scanProgressBar = document.getElementById('scanProgressBar');
                     const scanResultCard = document.getElementById('scanResultCard');
+                    const resultIcon = document.getElementById('resultIcon');
                     const resultTitle = document.getElementById('resultTitle');
                     const resultSub = document.getElementById('resultSub');
-                    const resultDetails = document.getElementById('resultDetails');
+                    const extractedGrid = document.getElementById('extractedDataGrid');
+                    const reviewBox = document.getElementById('reviewNoticeBox');
+                    const reviewText = document.getElementById('reviewNoticeText');
 
                     uploadPrompt.style.display = 'none';
                     scannerProgress.style.display = 'block';
@@ -346,7 +363,7 @@ require __DIR__ . '/includes/header.php';
 
                     let ocrText = '';
                     try {
-                        scanStatusText.innerText = 'جاري الفحص البصري واستخراج الأرقام (AI OCR)...';
+                        scanStatusText.innerText = 'جاري الفحص البصري واستخراج البيانات (AI OCR)...';
                         scanProgressBar.style.width = '55%';
 
                         // Run client-side Tesseract OCR
@@ -381,28 +398,45 @@ require __DIR__ . '/includes/header.php';
                             scannerProgress.style.display = 'none';
                             scanResultCard.style.display = 'block';
 
-                            if (data.success && data.reconciliation && data.reconciliation.matched) {
+                            const ocr = data.ocr_extracted || {};
+                            const recon = data.reconciliation || {};
+
+                            // Build Extracted Data Breakdown
+                            extractedGrid.innerHTML = `
+                                <div><span style="color:#9ca3af; font-size:0.78rem;">طريقة التحويل:</span><br><strong style="color:#fff;">${ocr.provider_name || 'تحويل إلكتروني'}</strong></div>
+                                <div><span style="color:#9ca3af; font-size:0.78rem;">المبلغ المستخرج:</span><br><strong style="color:#fbbf24;">${ocr.amount ? ocr.amount + ' ج.م' : '—'}</strong></div>
+                                <div><span style="color:#9ca3af; font-size:0.78rem;">الرقم المرجعي:</span><br><strong style="color:#38bdf8; font-family:monospace;">${ocr.reference_id || 'قيد الاستخراج'}</strong></div>
+                                <div><span style="color:#9ca3af; font-size:0.78rem;">المُرسل:</span><br><strong style="color:#fff;">${ocr.sender || '—'}</strong></div>
+                            `;
+
+                            if (data.success && recon.matched) {
+                                resultIcon.innerText = '✅';
                                 resultTitle.innerText = '✓ تم مطابقة التحويل واعتماد الطلب آلياً!';
                                 resultTitle.style.color = '#10b981';
-                                resultSub.innerText = 'تم التحقق من المبلغ والرقم المرجعي، وبدء تجهيز طلبك فوراً 🌸';
-                                resultDetails.innerHTML = `رقم العملية: <b>${data.reconciliation.reference_id}</b> | المبلغ المعتمد: <b>${data.reconciliation.paid_amount} ج.م</b>`;
+                                resultSub.innerText = 'تم التحقق من المبلغ والرقم المرجعي بنجاح، وبدء تجهيز طلبك فوراً 🌸';
+                                reviewBox.style.background = 'rgba(16, 185, 129, 0.15)';
+                                reviewBox.style.borderColor = '#10b981';
+                                reviewBox.style.color = '#34d399';
+                                reviewText.innerText = 'تم اعتماد الدفع بنجاح (رقم العملية: ' + recon.reference_id + ')';
                             } else {
-                                resultTitle.innerText = '✓ تم استلام صورة الإيصال بنجاح!';
+                                resultIcon.innerText = '⏳';
+                                resultTitle.innerText = '✓ تم استلام وقراءة الإيصال بنجاح!';
                                 resultTitle.style.color = '#d4af37';
-                                resultSub.innerText = 'تم استخراج بيانات الإيصال وجاري المطابقة مع إشعار البنك فور وصوله.';
-                                if (data.ocr_extracted && data.ocr_extracted.reference_id) {
-                                    resultDetails.innerHTML = `الرقم المستخرج: <b>${data.ocr_extracted.reference_id}</b> | المبلغ: <b>${data.ocr_extracted.amount || '—'} ج.م</b>`;
-                                } else {
-                                    resultDetails.innerText = 'تم حفظ الإيصال لمراجعة خدمة العملاء.';
-                                }
+                                resultSub.innerText = 'تم استخراج بيانات التحويل، والإيصال الآن بانتظار المراجعة السريعة.';
+                                reviewBox.style.background = 'rgba(212, 175, 55, 0.12)';
+                                reviewBox.style.borderColor = 'rgba(212, 175, 55, 0.35)';
+                                reviewBox.style.color = '#fde047';
+                                reviewText.innerText = 'طلبك قيد المتابعة - في انتظار مراجعة خدمة العملاء والمطابقة مع إشعار البنك فور وصوله.';
                             }
                         }, 500);
 
                     } catch (err) {
                         scannerProgress.style.display = 'none';
                         scanResultCard.style.display = 'block';
-                        resultTitle.innerText = 'تم رفع الإيصال بنجاح';
-                        resultSub.innerText = 'تم حفظ الإيصال للمراجعة وتأكيد طلبك.';
+                        resultIcon.innerText = '📥';
+                        resultTitle.innerText = 'تم حفظ صورة الإيصال';
+                        resultSub.innerText = 'تم حفظ صورة التحويل لمراجعة وتأكيد طلبك.';
+                        reviewText.innerText = 'في انتظار مراجعة خدمة العملاء لتأكيد الطلب.';
                     }
                 }
                 </script>

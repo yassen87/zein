@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/orders_screen.dart';
 import 'screens/manual_test_screen.dart';
 import 'screens/settings_screen.dart';
 
@@ -55,6 +56,7 @@ class _MainNavigationHolderState extends State<MainNavigationHolder> {
 
   final List<Widget> _screens = const [
     DashboardScreen(),
+    OrdersScreen(),
     ManualTestScreen(),
     SettingsScreen(),
   ];
@@ -87,9 +89,14 @@ class _MainNavigationHolderState extends State<MainNavigationHolder> {
               label: 'الرئيسية',
             ),
             BottomNavigationBarItem(
+              icon: Icon(Icons.shopping_bag_outlined),
+              activeIcon: Icon(Icons.shopping_bag),
+              label: 'الطلبات',
+            ),
+            BottomNavigationBarItem(
               icon: Icon(Icons.science_outlined),
               activeIcon: Icon(Icons.science),
-              label: 'المحاكي والاختبار',
+              label: 'المحاكي',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.settings_outlined),
