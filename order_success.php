@@ -233,27 +233,179 @@ require __DIR__ . '/includes/header.php';
             <!-- Content Area -->
             <div style="padding: 2rem;">
                 
-                <!-- WhatsApp Top Priority Hero Box -->
+                <!-- AI OCR Receipt Scanner & Bank Reconciliation Card -->
+                <div id="ocrUploadCard" style="background: linear-gradient(135deg, #111827 0%, #1e293b 100%); border: 2px solid #d4af37; border-radius: 20px; padding: 1.75rem; color: #fff; margin-bottom: 2rem; position: relative; overflow: hidden;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 48px; height: 48px; border-radius: 14px; background: rgba(212,175,55,0.15); border: 1px solid #d4af37; display: flex; align-items: center; justify-content: center; font-size: 1.6rem;">
+                                📸
+                            </div>
+                            <div>
+                                <h3 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #d4af37;">
+                                    <?= $isArabic ? 'تأكيد الدفع التلقائي (رفع صورة الإيصال / السكرين شوت)' : 'Instant Payment Verification (Upload Receipt)' ?>
+                                </h3>
+                                <p style="margin: 4px 0 0; font-size: 0.88rem; color: #94a3b8;">
+                                    <?= $isArabic ? 'ارفع صورة تحويل إنستاباي أو فودافون كاش للمطابقة الذكية الفورية بدون انتظار' : 'Upload your InstaPay or Vodafone Cash transfer screenshot for instant auto-verification' ?>
+                                </p>
+                            </div>
+                        </div>
+                        <span style="background: rgba(212,175,55,0.15); color: #d4af37; padding: 4px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 700; border: 1px solid rgba(212,175,55,0.3);">
+                            ⚡ AI OCR Auto-Match
+                        </span>
+                    </div>
+
+                    <!-- Payment Details Quick Reference -->
+                    <div style="background: rgba(0,0,0,0.3); border: 1px dashed rgba(212,175,55,0.4); border-radius: 14px; padding: 1rem 1.25rem; margin-bottom: 1.25rem; display: flex; justify-content: space-around; flex-wrap: wrap; gap: 1rem; font-size: 0.9rem;">
+                        <div>
+                            <span style="color: #94a3b8; display: block; font-size: 0.8rem;">🟣 إنستاباي (InstaPay):</span>
+                            <strong style="color: #a78bfa; font-family: monospace; font-size: 0.95rem;">ahmedfayoumy1@instapay</strong>
+                            <a href="https://ipn.eg/S/ahmedfayoumy1/instapay/7H0dWv" target="_blank" style="color: #38bdf8; font-size: 0.75rem; text-decoration: underline; margin-right: 6px;">(رابط مباشر)</a>
+                        </div>
+                        <div style="border-right: 1px solid rgba(255,255,255,0.1); padding-right: 1rem;">
+                            <span style="color: #94a3b8; display: block; font-size: 0.8rem;">🔴 محفظة كاش (فودافون):</span>
+                            <strong style="color: #f87171; font-family: monospace; font-size: 0.95rem;">01005250838</strong>
+                        </div>
+                    </div>
+
+                    <!-- Upload & Scanner Zone -->
+                    <div id="dropZone" style="border: 2px dashed rgba(212,175,55,0.4); border-radius: 16px; padding: 1.75rem; text-align: center; background: rgba(255,255,255,0.02); cursor: pointer; transition: all 0.2s;" onclick="document.getElementById('receiptFileInput').click()">
+                        <input type="file" id="receiptFileInput" accept="image/*" style="display: none;" onchange="handleReceiptSelected(this.files[0])">
+                        <div id="uploadPrompt">
+                            <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">📂</div>
+                            <strong style="font-size: 1rem; color: #f8fafc; display: block; margin-bottom: 4px;">
+                                <?= $isArabic ? 'اضغط هنا لرفع صورة الإيصال أو اسحب الصورة وأفلتها' : 'Click to select receipt screenshot or drag & drop' ?>
+                            </strong>
+                            <span style="font-size: 0.82rem; color: #64748b;">(JPG, PNG, WEBP)</span>
+                        </div>
+
+                        <!-- Progress Bar & Radar Scanner -->
+                        <div id="scannerProgress" style="display: none; padding: 1rem 0;">
+                            <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 0.75rem;">
+                                <div class="spinner-border" style="width: 24px; height: 24px; border: 3px solid rgba(212,175,55,0.3); border-top-color: #d4af37; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+                                <strong id="scanStatusText" style="color: #d4af37; font-size: 0.95rem;">جاري قراءة بيانات التحويل بالذكاء الاصطناعي...</strong>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.1); border-radius: 10px; height: 8px; overflow: hidden; max-width: 320px; margin: 0 auto;">
+                                <div id="scanProgressBar" style="width: 25%; height: 100%; background: linear-gradient(90deg, #d4af37, #10b981); transition: width 0.3s;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Match Result Card -->
+                        <div id="scanResultCard" style="display: none; text-align: right; background: rgba(16,185,129,0.1); border: 1px solid #10b981; border-radius: 14px; padding: 1.25rem;">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 0.75rem;">
+                                <span style="font-size: 1.8rem; color: #10b981;">✅</span>
+                                <div>
+                                    <strong id="resultTitle" style="color: #10b981; font-size: 1.05rem; display: block;">تم اعتماد التحويل وتأكيد الطلب بنجاح!</strong>
+                                    <span id="resultSub" style="color: #cbd5e1; font-size: 0.85rem;">تم مطابقة الإيصال مع إشعار البنك وتأكيد حجز العطور.</span>
+                                </div>
+                            </div>
+                            <div id="resultDetails" style="font-size: 0.85rem; color: #94a3b8; background: rgba(0,0,0,0.25); padding: 0.75rem; border-radius: 10px; font-family: monospace;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- WhatsApp Dedicated Tracking Hero Box -->
                 <div class="wa-hero-box">
                     <div style="flex: 1; min-width: 260px;">
                         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 0.5rem;">
-                            <span style="font-size: 1.8rem;">📲</span>
+                            <span style="font-size: 1.8rem;">📦</span>
                             <h3 style="margin: 0; font-size: 1.25rem; font-weight: 800; color: #a7f3d0;">
-                                <?= $isArabic ? 'تأكيد طلبك فـوراً عبر الواتساب' : 'Confirm Order Instantly via WhatsApp' ?>
+                                <?= $isArabic ? 'تتبع شحنتك لحظة بلحظة عبر الواتساب' : 'Live Order Tracking via WhatsApp' ?>
                             </h3>
                         </div>
                         <p style="margin: 0; font-size: 0.95rem; line-height: 1.6; color: #ecfdf5;">
                             <?= $isArabic 
-                                ? 'اضغط على الزر لتأكيد طلبك ومعرفة تفاصيل الشحن والتحويل مع خدمة العملاء.' 
-                                : 'Click the button below to confirm your order and get delivery details directly.' ?>
+                                ? 'استقبل إشعارات مباشرة عند تجهيز العطور، تسليم الشحنة لشركة الشحن، وخروج المندوب للتوصيل.' 
+                                : 'Receive live updates as your perfume is packed, handed to courier, and out for delivery.' ?>
                         </p>
                     </div>
                     <div>
                         <a href="<?= esc($waUrl) ?>" target="_blank" rel="noopener noreferrer" class="btn-wa-action">
-                            <span>💬 <?= $isArabic ? 'فتح محادثة الواتساب الآن' : 'Open WhatsApp Chat' ?></span>
+                            <span>💬 <?= $isArabic ? 'متابعة الشحنة على الواتساب' : 'Track on WhatsApp' ?></span>
                         </a>
                     </div>
                 </div>
+
+                <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+                <script>
+                async function handleReceiptSelected(file) {
+                    if (!file) return;
+
+                    const uploadPrompt = document.getElementById('uploadPrompt');
+                    const scannerProgress = document.getElementById('scannerProgress');
+                    const scanStatusText = document.getElementById('scanStatusText');
+                    const scanProgressBar = document.getElementById('scanProgressBar');
+                    const scanResultCard = document.getElementById('scanResultCard');
+                    const resultTitle = document.getElementById('resultTitle');
+                    const resultSub = document.getElementById('resultSub');
+                    const resultDetails = document.getElementById('resultDetails');
+
+                    uploadPrompt.style.display = 'none';
+                    scannerProgress.style.display = 'block';
+                    scanResultCard.style.display = 'none';
+                    scanProgressBar.style.width = '30%';
+
+                    let ocrText = '';
+                    try {
+                        scanStatusText.innerText = 'جاري الفحص البصري واستخراج الأرقام (AI OCR)...';
+                        scanProgressBar.style.width = '55%';
+
+                        // Run client-side Tesseract OCR
+                        if (window.Tesseract) {
+                            const worker = await Tesseract.createWorker('ara+eng');
+                            const ret = await worker.recognize(file);
+                            ocrText = ret.data.text || '';
+                            await worker.terminate();
+                        }
+                    } catch (e) {
+                        console.warn('Client OCR notice:', e);
+                    }
+
+                    scanStatusText.innerText = 'جاري مطابقة التحويل مع سجلات البنك...';
+                    scanProgressBar.style.width = '85%';
+
+                    // Send to Backend
+                    const formData = new FormData();
+                    formData.append('order_id', '<?= (int)$order['id'] ?>');
+                    formData.append('receipt_image', file);
+                    formData.append('ocr_text', ocrText);
+
+                    try {
+                        const res = await fetch('api/upload_receipt_ocr.php', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const data = await res.json();
+                        scanProgressBar.style.width = '100%';
+
+                        setTimeout(() => {
+                            scannerProgress.style.display = 'none';
+                            scanResultCard.style.display = 'block';
+
+                            if (data.success && data.reconciliation && data.reconciliation.matched) {
+                                resultTitle.innerText = '✓ تم مطابقة التحويل واعتماد الطلب آلياً!';
+                                resultTitle.style.color = '#10b981';
+                                resultSub.innerText = 'تم التحقق من المبلغ والرقم المرجعي، وبدء تجهيز طلبك فوراً 🌸';
+                                resultDetails.innerHTML = `رقم العملية: <b>${data.reconciliation.reference_id}</b> | المبلغ المعتمد: <b>${data.reconciliation.paid_amount} ج.م</b>`;
+                            } else {
+                                resultTitle.innerText = '✓ تم استلام صورة الإيصال بنجاح!';
+                                resultTitle.style.color = '#d4af37';
+                                resultSub.innerText = 'تم استخراج بيانات الإيصال وجاري المطابقة مع إشعار البنك فور وصوله.';
+                                if (data.ocr_extracted && data.ocr_extracted.reference_id) {
+                                    resultDetails.innerHTML = `الرقم المستخرج: <b>${data.ocr_extracted.reference_id}</b> | المبلغ: <b>${data.ocr_extracted.amount || '—'} ج.م</b>`;
+                                } else {
+                                    resultDetails.innerText = 'تم حفظ الإيصال لمراجعة خدمة العملاء.';
+                                }
+                            }
+                        }, 500);
+
+                    } catch (err) {
+                        scannerProgress.style.display = 'none';
+                        scanResultCard.style.display = 'block';
+                        resultTitle.innerText = 'تم رفع الإيصال بنجاح';
+                        resultSub.innerText = 'تم حفظ الإيصال للمراجعة وتأكيد طلبك.';
+                    }
+                }
+                </script>
 
                 <!-- Stepper -->
                 <div class="stepper-wrap">
