@@ -25,7 +25,7 @@ class SmsParser {
 
       final amount = amountMatch != null ? double.tryParse(amountMatch.group(1)!.replaceAll(',', '')) : null;
       final refId = refMatch != null ? refMatch.group(1)!.trim() : 'VF-${DateTime.now().millisecondsSinceEpoch}';
-      final sender = senderMatch != null ? senderMatch.group(1)!.trim() : null;
+      final sender = senderMatch?.group(1)?.trim();
 
       if (amount != null && amount > 0) {
         return TransferTransaction(
@@ -63,7 +63,7 @@ class SmsParser {
 
       final amount = amountMatch != null ? double.tryParse(amountMatch.group(1)!.replaceAll(',', '')) : null;
       final refId = refMatch != null ? refMatch.group(1)!.trim() : 'IPA-${DateTime.now().millisecondsSinceEpoch}';
-      final sender = senderMatch != null ? senderMatch.group(1)!.trim() : null;
+      final sender = senderMatch?.group(1)?.trim();
 
       if (amount != null && amount > 0) {
         return TransferTransaction(

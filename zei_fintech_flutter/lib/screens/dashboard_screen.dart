@@ -384,8 +384,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFF1F2937)),
       ),
-      child: Column(
-        children: const [
+      child: const Column(
+        children: [
           Icon(Icons.inbox, size: 48, color: Color(0xFF4B5563)),
           SizedBox(height: 12),
           Text(
