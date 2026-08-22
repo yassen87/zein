@@ -341,6 +341,45 @@ require __DIR__ . '/includes/header.php';
 
                 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
                 <script>
+                // Preprocess image on canvas to optimize camera photos of other phone screens
+                async function preprocessImageForOcr(file) {
+                    return new Promise((resolve) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+                            const maxDim = 1600;
+                            let w = img.width;
+                            let h = img.height;
+                            if (w > maxDim || h > maxDim) {
+                                if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+                                else { w = Math.round((w * maxDim) / h); h = maxDim; }
+                            }
+                            canvas.width = w;
+                            canvas.height = h;
+                            ctx.drawImage(img, 0, 0, w, h);
+
+                            // Grayscale and contrast stretch
+                            const imgData = ctx.getImageData(0, 0, w, h);
+                            const d = imgData.data;
+                            const contrast = 1.35; // boost contrast
+                            const factor = (259 * (contrast * 128 + 255)) / (255 * (259 - contrast * 128));
+
+                            for (let i = 0; i < d.length; i += 4) {
+                                const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+                                const adjusted = Math.min(255, Math.max(0, factor * (gray - 128) + 128));
+                                d[i] = adjusted;
+                                d[i + 1] = adjusted;
+                                d[i + 2] = adjusted;
+                            }
+                            ctx.putImageData(imgData, 0, 0);
+                            canvas.toBlob((blob) => resolve(blob || file), 'image/jpeg', 0.92);
+                        };
+                        img.onerror = () => resolve(file);
+                        img.src = URL.createObjectURL(file);
+                    });
+                }
+
                 async function handleReceiptSelected(file) {
                     if (!file) return;
 
@@ -359,17 +398,21 @@ require __DIR__ . '/includes/header.php';
                     uploadPrompt.style.display = 'none';
                     scannerProgress.style.display = 'block';
                     scanResultCard.style.display = 'none';
-                    scanProgressBar.style.width = '30%';
+                    scanProgressBar.style.width = '25%';
 
                     let ocrText = '';
                     try {
-                        scanStatusText.innerText = 'جاري الفحص البصري واستخراج البيانات (AI OCR)...';
-                        scanProgressBar.style.width = '55%';
+                        scanStatusText.innerText = 'جاري معالجة الصورة وتحسين الإضاءة...';
+                        const processedBlob = await preprocessImageForOcr(file);
+                        scanProgressBar.style.width = '45%';
 
-                        // Run client-side Tesseract OCR
+                        scanStatusText.innerText = 'جاري قراءة البيانات بالذكاء الاصطناعي (AI OCR)...';
+                        scanProgressBar.style.width = '65%';
+
+                        // Run client-side Tesseract OCR with Arabic & English
                         if (window.Tesseract) {
-                            const worker = await Tesseract.createWorker('ara+eng');
-                            const ret = await worker.recognize(file);
+                            const worker = await Tesseract.createWorker(['ara', 'eng']);
+                            const ret = await worker.recognize(processedBlob);
                             ocrText = ret.data.text || '';
                             await worker.terminate();
                         }
@@ -404,10 +447,21 @@ require __DIR__ . '/includes/header.php';
                             // Build Extracted Data Breakdown
                             extractedGrid.innerHTML = `
                                 <div><span style="color:#9ca3af; font-size:0.78rem;">طريقة التحويل:</span><br><strong style="color:#fff;">${ocr.provider_name || 'تحويل إلكتروني'}</strong></div>
-                                <div><span style="color:#9ca3af; font-size:0.78rem;">المبلغ المستخرج:</span><br><strong style="color:#fbbf24;">${ocr.amount ? ocr.amount + ' ج.م' : '—'}</strong></div>
-                                <div><span style="color:#9ca3af; font-size:0.78rem;">الرقم المرجعي:</span><br><strong style="color:#38bdf8; font-family:monospace;">${ocr.reference_id || 'قيد الاستخراج'}</strong></div>
+                                <div><span style="color:#9ca3af; font-size:0.78rem;">المبلغ المستخرج:</span><br><strong style="color:#fbbf24; font-size:1.05rem;">${ocr.amount ? ocr.amount + ' ج.م' : '—'}</strong></div>
+                                <div><span style="color:#9ca3af; font-size:0.78rem;">الرقم المرجعي:</span><br><strong style="color:#38bdf8; font-family:monospace; font-size:1.05rem;">${ocr.reference_id || 'قيد الاستخراج'}</strong></div>
                                 <div><span style="color:#9ca3af; font-size:0.78rem;">المُرسل:</span><br><strong style="color:#fff;">${ocr.sender || '—'}</strong></div>
                             `;
+
+                            if (ocrText && ocrText.trim().length > 0) {
+                                extractedGrid.innerHTML += `
+                                    <div style="grid-column: 1 / -1; margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 8px;">
+                                        <details style="font-size: 0.8rem; color: #9ca3af; cursor: pointer;">
+                                            <summary style="color: #d4af37; font-weight: bold;">📄 عرض النص المقروء بالكامل من الصورة</summary>
+                                            <pre style="white-space: pre-wrap; word-break: break-all; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 8px; margin-top: 6px; color: #e2e8f0; font-size: 0.78rem;">${ocrText.trim()}</pre>
+                                        </details>
+                                    </div>
+                                `;
+                            }
 
                             if (data.success && recon.matched) {
                                 resultIcon.innerText = '✅';

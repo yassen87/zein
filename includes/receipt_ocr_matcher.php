@@ -7,17 +7,30 @@ declare(strict_types=1);
  */
 
 require_once __DIR__ . '/db.php';
-require_once __DIR__ . '/whatsapp_helpers.php';
+require_once __DIR__ . '/whatsapp_helper.php';
 
 class ReceiptOcrMatcher
 {
     /**
-     * Parse raw OCR text extracted from receipt image
+    /**
+     * Normalize Arabic-Indic digits and Persian digits to standard Western digits
+     */
+    public static function normalizeDigits(string $str): string
+    {
+        $arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+        $persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+        $standard = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+        $s = str_replace($arabic, $standard, $str);
+        return str_replace($persian, $standard, $s);
+    }
+
+    /**
+     * Parse raw OCR text extracted from receipt image (including camera photos of other screens)
      */
     public static function parseOcrText(string $rawText): array
     {
-        $text = trim($rawText);
-        $cleanText = str_replace(["\r", "\t"], ' ', $text);
+        $normalized = self::normalizeDigits($rawText);
+        $cleanText = str_replace(["\r", "\t"], ' ', $normalized);
 
         $result = [
             'amount' => null,
@@ -26,67 +39,78 @@ class ReceiptOcrMatcher
             'provider' => 'unknown',
             'provider_name' => 'تحويل إلكتروني',
             'confidence' => 0,
+            'raw_preview' => mb_substr(trim($cleanText), 0, 300),
         ];
 
-        if (empty($cleanText)) {
+        if (empty(trim($cleanText))) {
             return $result;
         }
 
-        // 1. Detect Provider
-        if (stripos($cleanText, 'vodafone') !== false || stripos($cleanText, 'فودافون') !== false || stripos($cleanText, 'VF-Cash') !== false) {
+        // 1. Detect Provider / Wallet
+        if (preg_match('/(?:vodafone|فودافون|VF[\-_]?Cash|كاش|01005250838)/ui', $cleanText)) {
             $result['provider'] = 'vodafone_cash';
             $result['provider_name'] = 'فودافون كاش (Vodafone Cash)';
-            $result['confidence'] += 20;
-        } elseif (stripos($cleanText, 'instapay') !== false || stripos($cleanText, 'انستاباي') !== false || stripos($cleanText, 'إنستاباي') !== false || stripos($cleanText, 'IPN') !== false) {
+            $result['confidence'] += 25;
+        } elseif (preg_match('/(?:instapay|انستاباي|إنستاباي|انستا|IPN|ahmedfayoumy)/ui', $cleanText)) {
             $result['provider'] = 'instapay';
             $result['provider_name'] = 'إنستاباي (InstaPay IPN)';
-            $result['confidence'] += 20;
-        } elseif (stripos($cleanText, 'orange') !== false || stripos($cleanText, 'اورانج') !== false || stripos($cleanText, 'أورانج') !== false) {
+            $result['confidence'] += 25;
+        } elseif (preg_match('/(?:orange|اورانج|أورانج|موبينيل)/ui', $cleanText)) {
             $result['provider'] = 'orange_cash';
             $result['provider_name'] = 'أورانج كاش (Orange Money)';
             $result['confidence'] += 20;
-        } elseif (stripos($cleanText, 'etisalat') !== false || stripos($cleanText, 'اتصالات') !== false || stripos($cleanText, 'e&') !== false) {
+        } elseif (preg_match('/(?:etisalat|اتصالات|e&|اتصالات\s*كاش)/ui', $cleanText)) {
             $result['provider'] = 'etisalat_cash';
             $result['provider_name'] = 'اتصالات كاش (e& money)';
             $result['confidence'] += 20;
-        }
-
-        // 2. Extract Reference Number
-        // Matches: "الرقم المرجعي: 12345678" or "Ref No: IPA-123456" or standalone 8-20 digit codes
-        if (preg_match('/(?:الرقم\s*المرجعي|رقم\s*العملية|المرجعي|كود\s*العملية|ref(?:erence)?(?:\s*no)?|trx|tx)[\s:#\-]*([a-zA-Z0-9_\-]{5,30})/i', $cleanText, $mRef)) {
-            $result['reference_id'] = trim($mRef[1]);
-            $result['confidence'] += 35;
-        } elseif (preg_match('/\b([0-9]{8,25})\b/', $cleanText, $mDigits)) {
-            $result['reference_id'] = trim($mDigits[1]);
+        } elseif (preg_match('/(?:cib|الأهلي|مصر|بنك|NBE|QNB|AlexBank)/ui', $cleanText)) {
+            $result['provider'] = 'bank_transfer';
+            $result['provider_name'] = 'تحويل بنكي / محفظة بنكية';
             $result['confidence'] += 20;
-        } elseif (preg_match('/\b(IPA[0-9]{6,16}|VF[0-9]{6,16})\b/i', $cleanText, $mAlpha)) {
-            $result['reference_id'] = trim($mAlpha[1]);
-            $result['confidence'] += 30;
         }
 
-        // 3. Extract Amount (المبلغ)
-        // Matches: "المبلغ: 650.00 ج.م" or "EGP 650" or "650 LE" or "650.00 جنيه"
-        if (preg_match('/(?:المبلغ|المبلغ\s*المدفوع|المبلغ\s*المحول|القيمة|Amount|Total)?[\s:#\-]*([0-9,]+(?:\.[0-9]{1,2})?)\s*(?:ج\.?م|جنيه|جم|EGP|LE)/i', $cleanText, $mAmt)) {
+        // 2. Extract Reference Number (الرقم المرجعي / كود المعاملة)
+        if (preg_match('/(?:الرقم\s*المرجعي|رقم\s*العملية|المرجعي|مرجع\s*المعاملة|كود\s*العملية|ref(?:erence)?(?:\s*no)?|trx|tx|Transaction\s*ID)[\s:#\-]*([a-zA-Z0-9_\-]{5,32})/ui', $cleanText, $mRef)) {
+            $result['reference_id'] = trim($mRef[1]);
+            $result['confidence'] += 40;
+        } elseif (preg_match('/\b(IPA[\-_]?[0-9a-zA-Z]{5,20}|VF[\-_]?[0-9]{6,16}|OR[\-_]?[0-9]{6,16})\b/i', $cleanText, $mAlpha)) {
+            $result['reference_id'] = trim($mAlpha[1]);
+            $result['confidence'] += 35;
+        } elseif (preg_match('/\b([0-9]{9,22})\b/', $cleanText, $mDigits)) {
+            $result['reference_id'] = trim($mDigits[1]);
+            $result['confidence'] += 25;
+        }
+
+        // 3. Extract Amount (المبلغ المحول)
+        if (preg_match('/(?:المبلغ|المبلغ\s*المدفوع|المبلغ\s*المحول|القيمة|قيمة\s*المعاملة|Amount|Total)?[\s:#\-]*([0-9,]+(?:\.[0-9]{1,2})?)\s*(?:ج\.?م|جنيه|جم|EGP|LE)/ui', $cleanText, $mAmt)) {
             $val = (float)str_replace(',', '', $mAmt[1]);
             if ($val > 0) {
                 $result['amount'] = $val;
                 $result['confidence'] += 35;
             }
-        } elseif (preg_match('/(?:EGP|LE)\s*([0-9,]+(?:\.[0-9]{1,2})?)/i', $cleanText, $mAmt2)) {
+        } elseif (preg_match('/(?:EGP|LE)\s*([0-9,]+(?:\.[0-9]{1,2})?)/ui', $cleanText, $mAmt2)) {
             $val = (float)str_replace(',', '', $mAmt2[1]);
             if ($val > 0) {
                 $result['amount'] = $val;
                 $result['confidence'] += 30;
             }
+        } elseif (preg_match('/(?:تم\s*تحويل|استلام|بمبلغ|المبلغ|مبلغ)[\s:#\-]*([0-9,]+(?:\.[0-9]{1,2})?)/ui', $cleanText, $mAmt3)) {
+            $val = (float)str_replace(',', '', $mAmt3[1]);
+            if ($val > 10) {
+                $result['amount'] = $val;
+                $result['confidence'] += 25;
+            }
         }
 
-        // 4. Extract Sender Wallet Phone or InstaPay handle
-        if (preg_match('/(?:من|من\s*رقم|من\s*محفظة|From)[\s:#\-]*([0-9]{11})/i', $cleanText, $mSendPhone)) {
+        // 4. Extract Sender Info (رقم الهاتف أو عنوان إنستاباي)
+        if (preg_match('/(?:من|من\s*رقم|من\s*محفظة|From)[\s:#\-]*([0-9]{11})/ui', $cleanText, $mSendPhone)) {
             $result['sender'] = trim($mSendPhone[1]);
             $result['confidence'] += 10;
-        } elseif (preg_match('/(?:من|From)[\s:#\-]*([a-zA-Z0-9._\-]+@instapay)/i', $cleanText, $mSendIpa)) {
+        } elseif (preg_match('/(?:من|From)[\s:#\-]*([a-zA-Z0-9._\-]+@instapay)/ui', $cleanText, $mSendIpa)) {
             $result['sender'] = trim($mSendIpa[1]);
             $result['confidence'] += 10;
+        } elseif (preg_match('/\b(01[0125][0-9]{8})\b/', $cleanText, $mAnyPhone)) {
+            $result['sender'] = trim($mAnyPhone[1]);
         }
 
         return $result;

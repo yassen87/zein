@@ -231,14 +231,18 @@ require __DIR__ . '/includes/header.php';
                     $emailToSave = $email !== '' ? $email : ($phone . '@guest.zeinperfumes.com');
                     
                     $paymentMethod = trim((string)($_POST['payment_method'] ?? 'vodafone_cash'));
-                    if (!in_array($paymentMethod, ['instapay', 'vodafone_cash', 'wallet', 'cod'], true)) {
+                    if (!in_array($paymentMethod, ['instapay', 'vodafone_cash', 'wallet'], true)) {
                         $paymentMethod = 'vodafone_cash';
                     }
-                    $initialPaymentStatus = ($paymentMethod === 'cod') ? 'unpaid' : 'pending';
+                    $paymentScope = trim((string)($_POST['payment_scope'] ?? 'full'));
+                    if (!in_array($paymentScope, ['full', 'shipping_only'], true)) {
+                        $paymentScope = 'full';
+                    }
+                    $initialPaymentStatus = 'pending';
 
                     $ins = $pdo->prepare(
-                        'INSERT INTO orders (order_number, confirmation_code, status, customer_name, customer_email, customer_phone, shipping_address, address_landmark, city, admin_notes, promo_code, payment_method, payment_status, subtotal, discount_amount, shipping_cost, total, is_confirmed, bot_step)
-                          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 0, \'initial\')'
+                        'INSERT INTO orders (order_number, confirmation_code, status, customer_name, customer_email, customer_phone, shipping_address, address_landmark, city, admin_notes, promo_code, payment_method, payment_scope, payment_status, subtotal, discount_amount, shipping_cost, total, is_confirmed, bot_step)
+                          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 0, \'initial\')'
                     );
                     $ins->execute([
                         $orderNumber,
@@ -253,6 +257,7 @@ require __DIR__ . '/includes/header.php';
                         $notes !== '' ? $notes : null,
                         $promoCodeRow ? $promoCodeRow['code'] : null,
                         $paymentMethod,
+                        $paymentScope,
                         $initialPaymentStatus,
                         round($totalForSubmit, 2),
                         $discountAmount > 0 ? round($discountAmount, 2) : null,
@@ -576,7 +581,8 @@ require __DIR__ . '/includes/header.php';
                         <input type="hidden" name="action" value="submit_order">
                         <input type="hidden" name="applied_promo_code" id="applied_promo_code" value="">
                         <input type="hidden" name="address_landmark" id="address_landmark_hidden" value="">
-                        <input type="hidden" name="payment_method" id="payment_method_hidden" value="cod">
+                        <input type="hidden" name="payment_method" id="payment_method_hidden" value="vodafone_cash">
+                        <input type="hidden" name="payment_scope" id="payment_scope_hidden" value="full">
 
                         <!-- Name -->
                         <div class="neo-input-wrap">
@@ -596,7 +602,7 @@ require __DIR__ . '/includes/header.php';
                             <input type="tel" name="customer_phone_2" placeholder="<?= esc(t('checkout_phone_2')) ?>" value="<?= esc(trim((string) ($_POST['customer_phone_2'] ?? ''))) ?>" dir="ltr">
                         </div>
 
-                        <!-- Email (Optional, hidden in design but kept functionality) -->
+                        <!-- Email (Optional) -->
                         <div class="neo-input-wrap">
                             <svg class="neo-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
                             <input type="email" name="customer_email" placeholder="<?= esc(t('checkout_email')) ?> (<?= esc(current_lang() == 'ar' ? 'إختياري' : 'Optional') ?>)" value="<?= esc(trim((string) ($_POST['customer_email'] ?? ''))) ?>">
@@ -620,53 +626,78 @@ require __DIR__ . '/includes/header.php';
                             <svg class="neo-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--gold-dark);"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
                             <input type="text" name="shipping_address" placeholder="<?= esc(t('checkout_address')) ?>" required value="<?= esc(trim((string) ($_POST['shipping_address'] ?? ''))) ?>">
                         </div>
-                        <!-- Payment Method Selection -->
+
+                        <!-- 1. Payment Method Selection (InstaPay or Vodafone Cash) -->
                         <div class="checkout-payment-section" style="margin-top: 1.5rem;">
                             <label style="display:block; font-weight:800; font-size:1rem; color:var(--neo-heading); margin-bottom:0.75rem;">
-                                <?= current_lang() === 'ar' ? 'اختر طريقة الدفع المناسبة لك:' : 'Select Your Payment Method:' ?>
+                                <?= current_lang() === 'ar' ? '١. اختر وسيلة التحويل:' : '1. Select Transfer Method:' ?>
                             </label>
                             
                             <div class="payment-methods-grid">
-                                <!-- InstaPay -->
-                                <label class="payment-option-card" id="card-instapay" onclick="selectPaymentMethod('instapay')">
-                                    <input type="radio" name="payment_method_radio" value="instapay">
-                                    <div class="payment-card-content">
-                                        <div class="payment-card-header">
-                                            <span class="payment-icon ipa-icon">🟣</span>
-                                            <strong class="payment-name">إنستاباي (InstaPay)</strong>
-                                            <span class="payment-badge-instant">لحظي وتلقائي ⚡️</span>
-                                        </div>
-                                        <p class="payment-desc">
-                                            تحويل فوري عبر تطبيق إنستاباي لحسابنا: <code>ahmedfayoumy1@instapay</code>
-                                        </p>
-                                    </div>
-                                </label>
-
                                 <!-- Vodafone Cash / Wallets -->
                                 <label class="payment-option-card active" id="card-vodafone_cash" onclick="selectPaymentMethod('vodafone_cash')">
                                     <input type="radio" name="payment_method_radio" value="vodafone_cash" checked>
                                     <div class="payment-card-content">
                                         <div class="payment-card-header">
                                             <span class="payment-icon vf-icon">🔴</span>
-                                            <strong class="payment-name">فودافون كاش ومحافظ إلكترونية</strong>
+                                            <strong class="payment-name">فودافون كاش والمحافظ الإلكترونية</strong>
                                             <span class="payment-badge-popular">الأكثر استخداماً 🔥</span>
                                         </div>
                                         <p class="payment-desc">
-                                            تحويل مباشر على رقم محفظتنا: <code>01005250838</code>
+                                            تحويل مباشر على رقم محفظتنا المعتمد: <code>01005250838</code>
                                         </p>
                                     </div>
                                 </label>
 
-                                <!-- COD -->
-                                <label class="payment-option-card" id="card-cod" onclick="selectPaymentMethod('cod')">
-                                    <input type="radio" name="payment_method_radio" value="cod">
+                                <!-- InstaPay -->
+                                <label class="payment-option-card" id="card-instapay" onclick="selectPaymentMethod('instapay')">
+                                    <input type="radio" name="payment_method_radio" value="instapay">
                                     <div class="payment-card-content">
                                         <div class="payment-card-header">
-                                            <span class="payment-icon cod-icon">💵</span>
-                                            <strong class="payment-name">الدفع عند الاستلام (COD)</strong>
+                                            <span class="payment-icon ipa-icon">🟣</span>
+                                            <strong class="payment-name">إنستاباي (InstaPay IPN)</strong>
+                                            <span class="payment-badge-instant">لحظي وتلقائي ⚡️</span>
                                         </div>
                                         <p class="payment-desc">
-                                            سداد كامل قيمة الطلب نقداً عند وصول مندوب الشحن لباب بيتك.
+                                            تحويل فوري عبر تطبيق إنستاباي لعنوان الدفع: <code>ahmedfayoumy1@instapay</code>
+                                        </p>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 2. Payment Scope Selection (Full or Shipping Deposit) -->
+                        <div class="checkout-payment-section" style="margin-top: 1.25rem;">
+                            <label style="display:block; font-weight:800; font-size:1rem; color:var(--neo-heading); margin-bottom:0.75rem;">
+                                <?= current_lang() === 'ar' ? '٢. خيار السداد والتحويل:' : '2. Payment Amount Option:' ?>
+                            </label>
+                            
+                            <div class="payment-methods-grid">
+                                <!-- Full Amount -->
+                                <label class="payment-option-card active" id="scope-card-full" onclick="selectPaymentScope('full')">
+                                    <input type="radio" name="payment_scope_radio" value="full" checked>
+                                    <div class="payment-card-content">
+                                        <div class="payment-card-header">
+                                            <span class="payment-icon">💰</span>
+                                            <strong class="payment-name">تحويل كامل قيمة الطلب مقدم</strong>
+                                            <span class="payment-badge-popular" style="background:#dcfce7; color:#15803d;">تجهيز فوري وسريع ⚡️</span>
+                                        </div>
+                                        <p class="payment-desc">
+                                            سداد كامل الحساب الآن واستلام الشحنة مباشرة بدون أي مصاريف عند الباب.
+                                        </p>
+                                    </div>
+                                </label>
+
+                                <!-- Shipping Deposit Only -->
+                                <label class="payment-option-card" id="scope-card-shipping" onclick="selectPaymentScope('shipping_only')">
+                                    <input type="radio" name="payment_scope_radio" value="shipping_only">
+                                    <div class="payment-card-content">
+                                        <div class="payment-card-header">
+                                            <span class="payment-icon">🚚</span>
+                                            <strong class="payment-name">تحويل العربون (مصاريف الشحن فقط) مقدم</strong>
+                                        </div>
+                                        <p class="payment-desc">
+                                            تحويل مصاريف الشحن فقط الآن لتأكيد جدية الحجز، وسداد باقي ثمن العطور عند الاستلام.
                                         </p>
                                     </div>
                                 </label>
@@ -678,7 +709,7 @@ require __DIR__ . '/includes/header.php';
                             display: flex;
                             flex-direction: column;
                             gap: 0.75rem;
-                            margin-bottom: 1.25rem;
+                            margin-bottom: 0.5rem;
                         }
                         .payment-option-card {
                             display: flex;
@@ -753,8 +784,21 @@ require __DIR__ . '/includes/header.php';
                         <script>
                         function selectPaymentMethod(method) {
                             document.getElementById('payment_method_hidden').value = method;
-                            document.querySelectorAll('.payment-option-card').forEach(c => c.classList.remove('active'));
+                            document.getElementById('card-vodafone_cash').classList.remove('active');
+                            document.getElementById('card-instapay').classList.remove('active');
                             const card = document.getElementById('card-' + method);
+                            if (card) {
+                                card.classList.add('active');
+                                const radio = card.querySelector('input[type="radio"]');
+                                if (radio) radio.checked = true;
+                            }
+                        }
+
+                        function selectPaymentScope(scope) {
+                            document.getElementById('payment_scope_hidden').value = scope;
+                            document.getElementById('scope-card-full').classList.remove('active');
+                            document.getElementById('scope-card-shipping').classList.remove('active');
+                            const card = document.getElementById(scope === 'full' ? 'scope-card-full' : 'scope-card-shipping');
                             if (card) {
                                 card.classList.add('active');
                                 const radio = card.querySelector('input[type="radio"]');

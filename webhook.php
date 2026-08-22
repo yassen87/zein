@@ -7,7 +7,7 @@ declare(strict_types=1);
  */
 
 require_once __DIR__ . '/includes/db.php';
-require_once __DIR__ . '/includes/whatsapp_helpers.php';
+require_once __DIR__ . '/includes/whatsapp_helper.php';
 
 $cfg = get_wa_cloud_config();
 $pdo = medal_pdo();

@@ -2,9 +2,8 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/_init.php';
-admin_require_permission('orders');
 
-$page_title = 'إدارة التحويلات البنكية والمطابقة الذكية (Fintech & OCR Live)';
+$pageTitle = 'إدارة التحويلات البنكية والمطابقة الذكية (Fintech & OCR Live)';
 require_once __DIR__ . '/_layout_start.php';
 
 $pdo = medal_pdo();
