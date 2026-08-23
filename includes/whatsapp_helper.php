@@ -140,7 +140,7 @@ function send_whatsapp_order_status_notification(int $orderId, string $newStatus
             return ['success' => false, 'error' => 'Order not found'];
         }
 
-        $botUrl = 'http://127.0.0.1:3001/api/send-status-update';
+        $botUrl = 'https://wa.zeinperfumes.com/api/send-status-update';
         $settingSt = $pdo->prepare("SELECT setting_value_en FROM settings WHERE setting_key = 'whatsapp_bot_url' LIMIT 1");
         $settingSt->execute();
         $customUrl = $settingSt->fetchColumn();
@@ -187,7 +187,7 @@ function send_whatsapp_order_status_notification(int $orderId, string $newStatus
 function broadcast_whatsapp_new_product(array $productData): array
 {
     $pdo = medal_pdo();
-    $botUrl = 'http://127.0.0.1:3001/api/broadcast-product';
+    $botUrl = 'https://wa.zeinperfumes.com/api/broadcast-product';
 
     if ($pdo !== null) {
         try {
