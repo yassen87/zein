@@ -270,6 +270,21 @@ require __DIR__ . '/includes/header.php';
                     <!-- Upload & Scanner Zone -->
                     <div id="dropZone" style="border: 2px dashed rgba(212,175,55,0.4); border-radius: 16px; padding: 1.75rem; text-align: center; background: rgba(255,255,255,0.02); cursor: pointer; transition: all 0.2s;" onclick="document.getElementById('receiptFileInput').click()">
                         <input type="file" id="receiptFileInput" accept="image/*" style="display: none;" onchange="handleReceiptSelected(this.files[0])">
+                        
+                        <?php if (!empty($order['payment_receipt'])): ?>
+                        <div id="uploadPrompt">
+                            <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">✅</div>
+                            <strong style="font-size: 1.05rem; color: #10b981; display: block; margin-bottom: 6px;">
+                                <?= $isArabic ? '✓ تم إرفاق صورة إيصال التحويل مع الطلب بنجاح' : '✓ Transfer receipt screenshot attached with order' ?>
+                            </strong>
+                            <div style="margin: 10px 0;">
+                                <img src="<?= esc(url('assets/uploads/receipts/' . $order['payment_receipt'])) ?>" alt="Receipt" style="max-height: 140px; border-radius: 10px; border: 1px solid #d4af37; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+                            </div>
+                            <span style="font-size: 0.8rem; color: #94a3b8; text-decoration: underline;">
+                                <?= $isArabic ? 'اضغط هنا إذا كنت ترغب في استبدال الصورة بأخرى' : 'Click here to replace receipt image' ?>
+                            </span>
+                        </div>
+                        <?php else: ?>
                         <div id="uploadPrompt">
                             <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">📂</div>
                             <strong style="font-size: 1rem; color: #f8fafc; display: block; margin-bottom: 4px;">
@@ -277,6 +292,7 @@ require __DIR__ . '/includes/header.php';
                             </strong>
                             <span style="font-size: 0.82rem; color: #64748b;">(JPG, PNG, WEBP)</span>
                         </div>
+                        <?php endif; ?>
 
                         <!-- Progress Bar & Radar Scanner -->
                         <div id="scannerProgress" style="display: none; padding: 1rem 0;">

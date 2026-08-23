@@ -240,9 +240,29 @@ require __DIR__ . '/includes/header.php';
                     }
                     $initialPaymentStatus = 'pending';
 
+                    // Process Receipt Image if uploaded directly in checkout
+                    $uploadedReceiptFilename = null;
+                    $isConfirmedState = 0;
+                    if (!empty($_FILES['receipt_image']['name']) && $_FILES['receipt_image']['error'] === UPLOAD_ERR_OK) {
+                        $receiptsDir = __DIR__ . '/assets/uploads/receipts';
+                        if (!is_dir($receiptsDir)) {
+                            @mkdir($receiptsDir, 0777, true);
+                        }
+                        $ext = strtolower(pathinfo($_FILES['receipt_image']['name'], PATHINFO_EXTENSION));
+                        if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic'], true)) {
+                            $cleanName = 'receipt_' . preg_replace('/[^a-zA-Z0-9_\-]/', '', $orderNumber) . '_' . time() . '.' . $ext;
+                            $destPath = $receiptsDir . '/' . $cleanName;
+                            if (@move_uploaded_file($_FILES['receipt_image']['tmp_name'], $destPath)) {
+                                $uploadedReceiptFilename = $cleanName;
+                                $isConfirmedState = 1;
+                                $initialPaymentStatus = 'pending_verification';
+                            }
+                        }
+                    }
+
                     $ins = $pdo->prepare(
-                        'INSERT INTO orders (order_number, confirmation_code, status, customer_name, customer_email, customer_phone, shipping_address, address_landmark, city, admin_notes, promo_code, payment_method, payment_scope, payment_status, subtotal, discount_amount, shipping_cost, total, is_confirmed, bot_step)
-                          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 0, \'initial\')'
+                        'INSERT INTO orders (order_number, confirmation_code, status, customer_name, customer_email, customer_phone, shipping_address, address_landmark, city, admin_notes, promo_code, payment_method, payment_scope, payment_status, payment_receipt, subtotal, discount_amount, shipping_cost, total, is_confirmed, bot_step)
+                          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, \'initial\')'
                     );
                     $ins->execute([
                         $orderNumber,
@@ -259,10 +279,12 @@ require __DIR__ . '/includes/header.php';
                         $paymentMethod,
                         $paymentScope,
                         $initialPaymentStatus,
+                        $uploadedReceiptFilename,
                         round($totalForSubmit, 2),
                         $discountAmount > 0 ? round($discountAmount, 2) : null,
                         $shippingCost,
                         round($totalForSubmit - $discountAmount + $shippingCost, 2),
+                        $isConfirmedState,
                     ]);
                     $oid = (int) $pdo->lastInsertId();
                     $variantIds = [];
@@ -369,15 +391,7 @@ require __DIR__ . '/includes/header.php';
                         error_log('Error in checkout.php send_admin_new_order_notification: ' . $e->getMessage());
                     }
 
-                    // Trigger WhatsApp Bot Notification (1 - Confirm, 2 - Cancel, 3 - Edit)
-                    try {
-                        $orderTotal = (float)($totalForSubmit - $discountAmount + $shippingCost);
-                        require_once __DIR__ . '/includes/whatsapp_helper.php';
-                        $waResult = send_whatsapp_order_bot_notification($oid, $orderNumber, $name, $phone, $orderTotal, $orderLines, (float)$shippingCost);
-                        $_SESSION['last_wa_url'] = $waResult['fallback_wa_url'] ?? contact_whatsapp_url(1);
-                    } catch (Throwable $we) {
-                        $_SESSION['last_wa_url'] = contact_whatsapp_url(1);
-                    }
+                    $_SESSION['last_wa_url'] = contact_whatsapp_url(1);
 
                     $_SESSION['cart'] = [];
                     header('Location: ' . url('order_success.php?id=' . $oid));
@@ -704,6 +718,32 @@ require __DIR__ . '/includes/header.php';
                             </div>
                         </div>
 
+                        <!-- 3. Receipt Upload Section (Direct in Checkout) -->
+                        <div class="checkout-payment-section" style="margin-top: 1.25rem;">
+                            <label style="display:block; font-weight:800; font-size:1rem; color:var(--neo-heading); margin-bottom:0.75rem;">
+                                <?= current_lang() === 'ar' ? '٣. إرفاق صورة إيصال التحويل (اختياري الآن أو في الصفحة التالية):' : '3. Attach Transfer Receipt Screenshot:' ?>
+                            </label>
+
+                            <div class="receipt-upload-box" style="background:#fafafa; border:2px dashed #cbd5e1; border-radius:14px; padding:1.25rem; text-align:center; cursor:pointer; transition:all 0.2s ease;" onclick="document.getElementById('checkout_receipt_file').click()">
+                                <input type="file" name="receipt_image" id="checkout_receipt_file" accept="image/*" style="display:none;" onchange="previewCheckoutReceipt(this)">
+                                
+                                <div id="receipt_upload_prompt">
+                                    <div style="font-size:2rem; margin-bottom:0.5rem;">📸</div>
+                                    <strong style="color:var(--neo-heading); font-size:0.95rem; display:block; margin-bottom:0.25rem;">
+                                        اضغط هنا لرفع سكرين شوت / صورة إيصال التحويل
+                                    </strong>
+                                    <span style="color:#64748b; font-size:0.82rem;">
+                                        يدعم صور الموبايل ولقطات الشاشة (JPG, PNG, WebP)
+                                    </span>
+                                </div>
+
+                                <div id="receipt_preview_container" style="display:none; margin-top:0.5rem;">
+                                    <img id="receipt_preview_img" src="" alt="معاينة الإيصال" style="max-height:160px; border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.1); margin-bottom:0.5rem;">
+                                    <div style="font-size:0.85rem; color:#10b981; font-weight:bold;">✓ تم اختيار صورة الإيصال بنجاح</div>
+                                </div>
+                            </div>
+                        </div>
+
                         <style>
                         .payment-methods-grid {
                             display: flex;
@@ -768,9 +808,9 @@ require __DIR__ . '/includes/header.php';
                         }
                         .payment-desc {
                             margin: 0;
-                            font-size: 0.82rem;
+                            font-size: 0.84rem;
                             color: #64748b;
-                            line-height: 1.4;
+                            line-height: 1.5;
                         }
                         .payment-desc code {
                             background: rgba(0,0,0,0.06);
@@ -778,6 +818,10 @@ require __DIR__ . '/includes/header.php';
                             border-radius: 4px;
                             font-weight: 700;
                             color: #0f172a;
+                        }
+                        .receipt-upload-box:hover {
+                            border-color: #d4af37 !important;
+                            background: rgba(212, 175, 55, 0.03) !important;
                         }
                         </style>
 
@@ -803,6 +847,18 @@ require __DIR__ . '/includes/header.php';
                                 card.classList.add('active');
                                 const radio = card.querySelector('input[type="radio"]');
                                 if (radio) radio.checked = true;
+                            }
+                        }
+
+                        function previewCheckoutReceipt(input) {
+                            if (input.files && input.files[0]) {
+                                const reader = new FileReader();
+                                reader.onload = function(e) {
+                                    document.getElementById('receipt_preview_img').src = e.target.result;
+                                    document.getElementById('receipt_preview_container').style.display = 'block';
+                                    document.getElementById('receipt_upload_prompt').style.display = 'none';
+                                }
+                                reader.readAsDataURL(input.files[0]);
                             }
                         }
                         </script>
