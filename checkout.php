@@ -850,15 +850,53 @@ require __DIR__ . '/includes/header.php';
                             }
                         }
 
-                        function previewCheckoutReceipt(input) {
+                        async function compressImageFile(file, maxWidth = 1600, quality = 0.88) {
+                            return new Promise((resolve) => {
+                                const img = new Image();
+                                img.onload = () => {
+                                    let w = img.width;
+                                    let h = img.height;
+                                    if (w > maxWidth || h > maxWidth) {
+                                        if (w > h) { h = Math.round((h * maxWidth) / w); w = maxWidth; }
+                                        else { w = Math.round((w * maxWidth) / h); h = maxWidth; }
+                                    }
+                                    const canvas = document.createElement('canvas');
+                                    canvas.width = w;
+                                    canvas.height = h;
+                                    const ctx = canvas.getContext('2d');
+                                    ctx.drawImage(img, 0, 0, w, h);
+                                    canvas.toBlob((blob) => {
+                                        if (blob) {
+                                            const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", { type: 'image/jpeg', lastModified: Date.now() });
+                                            resolve(compressedFile);
+                                        } else {
+                                            resolve(file);
+                                        }
+                                    }, 'image/jpeg', quality);
+                                };
+                                img.onerror = () => resolve(file);
+                                img.src = URL.createObjectURL(file);
+                            });
+                        }
+
+                        async function previewCheckoutReceipt(input) {
                             if (input.files && input.files[0]) {
+                                const originalFile = input.files[0];
+                                const compressedFile = await compressImageFile(originalFile);
+
+                                try {
+                                    const dt = new DataTransfer();
+                                    dt.items.add(compressedFile);
+                                    input.files = dt.files;
+                                } catch (e) {}
+
                                 const reader = new FileReader();
                                 reader.onload = function(e) {
                                     document.getElementById('receipt_preview_img').src = e.target.result;
                                     document.getElementById('receipt_preview_container').style.display = 'block';
                                     document.getElementById('receipt_upload_prompt').style.display = 'none';
                                 }
-                                reader.readAsDataURL(input.files[0]);
+                                reader.readAsDataURL(compressedFile);
                             }
                         }
                         </script>
