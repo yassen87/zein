@@ -83,16 +83,16 @@ function format_wa_phone(string $phone): string
  * Send interactive Order Confirmation message with direct Clickable Buttons
  * ("تأكيد الطلب" and "إلغاء الطلب")
  */
-function sendInteractiveOrderButtons(string $phone, int|string $order_id, string $order_number, float|int $amount, string $customer_name = 'عميلنا العزيز'): array
+function sendInteractiveOrderButtons(string $phone, int|string $order_id, string $order_number, float|int $amount, string $customer_name = 'عميلنا العزيز', float|int $shipping_cost = 0): array
 {
     $cfg = get_wa_cloud_config();
     $recipient = format_wa_phone($phone);
 
-    $bodyText = "👑 *أهلاً بك يا أ/ {$customer_name} في متجر زين للعطور!* 🌸\n\n"
-              . "📦 تم تسجيل طلبك بنجاح برقم: *{$order_number}*\n"
-              . "💰 إجمالي المبلغ: *" . number_format((float)$amount, 2) . " ج.م*\n"
+    $bodyText = "🌸 *أهلاً بك أ/ {$customer_name} في زين للعطور!* 🌸\n\n"
+              . "📦 طلب رقم: *#{$order_number}*\n"
+              . "💰 إجمالي المبلغ: *" . number_format((float)$amount, 2) . " ج.م*" . ($shipping_cost > 0 ? " (شامل الشحن " . number_format((float)$shipping_cost, 2) . " ج.م)" : "") . "\n"
               . "─────────────────────\n"
-              . "يرجى الضغط على أحد الأزرار أدناه لتأكيد أو إلغاء طلبك فوراً:";
+              . "اختر طريقة السداد المفضلة بالضغط على أحد الأزرار:";
 
     $payload = [
         'messaging_product' => 'whatsapp',
@@ -109,15 +109,22 @@ function sendInteractiveOrderButtons(string $phone, int|string $order_id, string
                 'text' => $bodyText
             ],
             'footer' => [
-                'text' => 'متجر زين للعطور - Zein Perfumes'
+                'text' => 'زين للعطور - Zein Perfumes'
             ],
             'action' => [
                 'buttons' => [
                     [
                         'type' => 'reply',
                         'reply' => [
-                            'id' => 'btn_confirm_' . $order_id,
-                            'title' => '✅ تأكيد الطلب'
+                            'id' => 'btn_pay_full_' . $order_id,
+                            'title' => '💰 دفع المبلغ كامل'
+                        ]
+                    ],
+                    [
+                        'type' => 'reply',
+                        'reply' => [
+                            'id' => 'btn_pay_deposit_' . $order_id,
+                            'title' => '🚚 دفع العربون فقط'
                         ]
                     ],
                     [

@@ -114,36 +114,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $buttonTitle = $msg['button']['text'] ?? '';
                         }
 
-                        $isConfirm = str_contains(strtolower($buttonId), 'confirm') || str_contains($buttonTitle, 'تأكيد');
+                        $isPayFull = str_contains(strtolower($buttonId), 'pay_full') || str_contains($buttonTitle, 'المبلغ كامل') || str_contains($buttonTitle, 'كامل');
+                        $isPayDeposit = str_contains(strtolower($buttonId), 'pay_deposit') || str_contains($buttonTitle, 'العربون');
+                        $isConfirm = $isPayFull || $isPayDeposit || str_contains(strtolower($buttonId), 'confirm') || str_contains($buttonTitle, 'تأكيد');
                         $isCancel = str_contains(strtolower($buttonId), 'cancel') || str_contains($buttonTitle, 'إلغاء');
 
-                        // 1. Confirm Order Button Clicked
+                        // 1. Confirm / Pay Buttons Clicked
                         if ($isConfirm) {
+                            $scope = $isPayDeposit ? 'shipping_only' : 'full';
                             if ($pdo && $orderId) {
-                                $upd = $pdo->prepare("UPDATE orders SET is_confirmed = 1, confirmed_at = NOW(), bot_step = 'awaiting_receipt', payment_status = 'pending_payment' WHERE id = ?");
-                                $upd->execute([$orderId]);
+                                $upd = $pdo->prepare("UPDATE orders SET is_confirmed = 1, confirmed_at = NOW(), bot_step = 'awaiting_receipt', payment_scope = ?, payment_status = 'pending_payment' WHERE id = ?");
+                                $upd->execute([$scope, $orderId]);
                             }
 
+                            $amountToPay = $isPayDeposit ? $shippingCost : $total;
+                            $amountLabel = $isPayDeposit ? "عربون الشحن (" . number_format($shippingCost, 2) . " ج.م)" : "المبلغ كامل (" . number_format($total, 2) . " ج.م)";
+
                             $payPrompt = 
-"👑 *شكراً لتأكيد طلبك يا أ/ {$customerName}!* 🌸
-📦 بخصوص طلب رقم: *{$orderNumber}*
-💰 إجمالي المبلغ: *" . number_format($total, 2) . " ج.م*
-
-نظراً لتجهيز العطور وتغليف الشحنة بعناية، يرجى تحويل مصاريف الشحن أو كامل المبلغ عبر أحد الحسابات الرسمية:
-
-🟣 *إنستاباي (InstaPay):*
-▫️ المعرّف: `{$instapayUser}`
-🔗 *رابط الدفع المباشر بنقرة واحدة:*
-{$instapayUrl}
-
-🔴 *محفظة كاش (فودافون كاش / اتصالات / أورانج / وي):*
-▫️ الرقم: `{$vodafoneCash}`
+"🌸 *شكراً لتأكيد طلبك أ/ {$customerName}!* 🌸
+📦 طلب رقم: *#{$orderNumber}*
+💵 المطلوب تحويله: *{$amountLabel}*
 ─────────────────────
-💵 *المبلغ المطلوب لتحويل الشحن:* *" . number_format($shippingCost, 2) . " ج.م*
-🚚 *المتبقي عند الاستلام:* *" . number_format($remainingAmount, 2) . " ج.م*
+💳 *بيانات التحويل:*
+• إنستاباي: `{$instapayUser}`
+• فودافون كاش: `{$vodafoneCash}`
 
-📸 *لتأكيد الحجز فوراً:*
-يرجى إرسال *صورة إيصال التحويل (Screenshot)* 📸 هنا في الشات وسيتم بدء تجهيز شحنتك فوراً! ✨";
+📸 *أرسل صورة إيصال التحويل هنا لتأكيد الحجز وبدء الشحن فوراً!* ✨";
 
                             sendTextMessage($senderPhone, $payPrompt);
                             continue;
