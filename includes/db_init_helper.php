@@ -7,6 +7,23 @@ declare(strict_types=1);
  */
 
 /**
+ * Checks if the database is connected and initialized.
+ */
+function medal_db_is_initialized(): bool
+{
+    $pdo = medal_pdo();
+    if ($pdo === null) {
+        return false;
+    }
+    try {
+        $st = $pdo->query("SELECT 1 FROM admin_users LIMIT 1");
+        return ($st !== false);
+    } catch (\Throwable) {
+        return false;
+    }
+}
+
+/**
  * Runs the SQL schema from database/schema.sql
  */
 function medal_db_run_schema(PDO $pdo): bool
