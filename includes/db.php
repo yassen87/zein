@@ -10,13 +10,13 @@ if (!defined('MEDAL_DB_DSN') && is_file(__DIR__ . '/db.hostinger.php')) {
 }
 
 if (!defined('MEDAL_DB_DSN')) {
-    define('MEDAL_DB_DSN', 'mysql:host=127.0.0.1;dbname=medal_db;charset=utf8mb4');
+    define('MEDAL_DB_DSN', 'mysql:host=localhost;dbname=u868008675_zein;charset=utf8mb4');
 }
 if (!defined('MEDAL_DB_USER')) {
-    define('MEDAL_DB_USER', 'zein');
+    define('MEDAL_DB_USER', 'u868008675_zein');
 }
 if (!defined('MEDAL_DB_PASS')) {
-    define('MEDAL_DB_PASS', 'P@ssw0rd123!');
+    define('MEDAL_DB_PASS', 'O#k68:9tEtE&');
 }
 
 function medal_pdo(): ?PDO
