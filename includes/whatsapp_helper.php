@@ -38,19 +38,15 @@ function send_whatsapp_order_bot_notification(int $orderId, string $orderNumber,
 
     $jsonPayload = json_encode($payload, JSON_UNESCAPED_UNICODE);
 
-    // Prepare direct fallback wa.me URL
-    $fallbackMsg = "🌸 *أهلاً بك يا أ/ {$customerName} في متجر زين للعطور* 🌸\n\n";
-    $fallbackMsg .= "📦 تم استلام طلبك بنجاح برقم: *{$orderNumber}*\n";
-    if ($shippingCost > 0) {
-        $fallbackMsg .= "🚚 مصاريف الشحن: *" . number_format($shippingCost, 2) . " ج.م*\n";
-    }
-    $fallbackMsg .= "💰 إجمالي المبلغ: *" . number_format($total, 2) . " ج.م*\n";
+    // Prepare direct fallback wa.me URL (Concise & Clear)
+    $fallbackMsg = "🌸 *أهلاً بك أ/ {$customerName} في زين للعطور!* 🌸\n\n";
+    $fallbackMsg .= "📦 طلب رقم: *#{$orderNumber}*\n";
+    $fallbackMsg .= "💰 الإجمالي: *" . number_format($total, 2) . " ج.م*" . ($shippingCost > 0 ? " (شامل الشحن " . number_format($shippingCost, 2) . " ج.م)" : "") . "\n";
     $fallbackMsg .= "─────────────────────\n";
-    $fallbackMsg .= "يرجى اختيار الإجراء المطلوب بالرد برقم الخيار:\n\n";
-    $fallbackMsg .= "1️⃣ - *تأكيد الطلب ونظام الدفع* 💳\n";
-    $fallbackMsg .= "2️⃣ - *إلغاء الطلب* ❌\n";
-    $fallbackMsg .= "3️⃣ - *تعديل بيانات الطلب* ✏️\n\n";
-    $fallbackMsg .= "_(يرجى الرد برقم 1 أو 2 أو 3 للمتابعة)_";
+    $fallbackMsg .= "💳 *بيانات التحويل (المبلغ كامل أو العربون):*\n";
+    $fallbackMsg .= "• إنستاباي: `ahmedfayoumy1@instapay`\n";
+    $fallbackMsg .= "• فودافون كاش: `01005250838`\n\n";
+    $fallbackMsg .= "📸 *أرسل صورة إيصال التحويل هنا لتأكيد طلبك وبدء الشحن فوراً!* ✨";
 
     $fallbackWaUrl = contact_whatsapp_url(1) . '?text=' . urlencode($fallbackMsg);
 

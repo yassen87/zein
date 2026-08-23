@@ -26,7 +26,7 @@ $pdo->exec("
 ");
 
 $username = $argv[1] ?? 'admin';
-$password = $argv[2] ?? 'P@ssw0rd123!';
+$password = $argv[2] ?? 'admin123';
 
 $hash = password_hash($password, PASSWORD_DEFAULT);
 

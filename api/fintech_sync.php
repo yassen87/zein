@@ -13,16 +13,17 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+require_once __DIR__ . '/../includes/receipt_ocr_matcher.php';
+
 $rawInput = file_get_contents('php://input');
 $data = json_decode($rawInput, true);
 
 if (!is_array($data)) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Invalid JSON payload']);
-    exit;
+    // Also accept standard POST form fields (x-www-form-urlencoded)
+    $data = $_POST;
 }
 
-$apiKey = trim((string)($data['api_key'] ?? $_SERVER['HTTP_X_API_KEY'] ?? ''));
+$apiKey = trim((string)($data['api_key'] ?? $data['token'] ?? $_GET['api_key'] ?? $_SERVER['HTTP_X_API_KEY'] ?? ''));
 $expectedKey = trim(get_setting('fintech_device_api_key', 'zei_fintech_secret_key_2026'));
 
 if ($apiKey === '' || ($apiKey !== $expectedKey && $apiKey !== 'zei_fintech_secret_key_2026')) {
@@ -31,16 +32,37 @@ if ($apiKey === '' || ($apiKey !== $expectedKey && $apiKey !== 'zei_fintech_secr
     exit;
 }
 
-$provider = trim((string)($data['provider'] ?? 'unknown'));
+$rawMessage = trim((string)($data['raw_message'] ?? $data['message'] ?? $data['body'] ?? $data['text'] ?? $data['content'] ?? ''));
+$sender = trim((string)($data['sender'] ?? $data['from'] ?? $data['phone'] ?? ''));
+$provider = trim((string)($data['provider'] ?? ''));
 $amount = (float)($data['amount'] ?? 0);
-$sender = trim((string)($data['sender'] ?? ''));
-$referenceId = trim((string)($data['reference_id'] ?? ''));
-$rawMessage = trim((string)($data['raw_message'] ?? ''));
+$referenceId = trim((string)($data['reference_id'] ?? $data['ref_id'] ?? $data['trx_id'] ?? ''));
 $receivedAt = trim((string)($data['received_at'] ?? date('Y-m-d H:i:s')));
+
+// If raw message is sent from Google Play SMS Forwarder app, auto-parse with OCR matcher
+if (($amount <= 0 || $referenceId === '') && !empty($rawMessage)) {
+    $parsed = ReceiptOcrMatcher::parseOcrText($rawMessage);
+    if ($amount <= 0 && !empty($parsed['amount'])) {
+        $amount = (float)$parsed['amount'];
+    }
+    if ($referenceId === '' && !empty($parsed['reference_id'])) {
+        $referenceId = (string)$parsed['reference_id'];
+    }
+    if (empty($provider) || $provider === 'unknown') {
+        $provider = $parsed['provider'] ?? 'unknown';
+    }
+    if (empty($sender) && !empty($parsed['sender'])) {
+        $sender = $parsed['sender'];
+    }
+}
 
 if ($amount <= 0 || $referenceId === '') {
     http_response_code(422);
-    echo json_encode(['success' => false, 'error' => 'Amount and reference_id are required']);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Amount and reference_id could not be determined from payload',
+        'received_message' => $rawMessage
+    ]);
     exit;
 }
 
