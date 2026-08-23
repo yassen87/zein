@@ -36,7 +36,10 @@ unset($_SESSION['women_category_cart_alert']);
     } catch (e) {}
     </script>
     
-    <!-- Primary Meta Tags -->
+    <!-- Primary Meta Tags & Cache Control -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title><?= esc($pageTitle ?? 'Zain Perfumes') ?> — <?= esc(get_site_name()) ?></title>
     <meta name="description" content="<?= esc($pageDescription ?? get_site_description()) ?>">
     <meta name="robots" content="<?= isset($noindex) && $noindex ? 'noindex, nofollow' : 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1' ?>">
