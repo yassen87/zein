@@ -591,6 +591,11 @@ require __DIR__ . '/includes/header.php';
 
                 <!-- Form Container -->
                 <div class="neo-dashed-box">
+                    <div style="background: linear-gradient(135deg, #1e293b, #0f172a); color: #d4af37; padding: 0.6rem 1rem; border-radius: 10px; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(212,175,55,0.3); font-size: 0.88rem; font-weight: 700;">
+                        <span>👑 بوابة الدفع وتأكيد الطلب المعتمدة</span>
+                        <span style="font-size: 0.75rem; background: rgba(212,175,55,0.2); padding: 2px 8px; border-radius: 6px; color: #f8fafc;">تحديث مباشر ⚡</span>
+                    </div>
+
                     <h3 class="neo-form-title"><?= esc(current_lang() == 'ar' ? 'يرجى تعبئة بياناتك لإتمام الطلب' : 'Please fill your information to complete the order') ?></h3>
                     
                     <form method="post" action="<?= esc(url('checkout.php')) ?>" id="main-checkout-form" enctype="multipart/form-data">
