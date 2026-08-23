@@ -255,7 +255,7 @@ require __DIR__ . '/includes/header.php';
                             if (@move_uploaded_file($_FILES['receipt_image']['tmp_name'], $destPath)) {
                                 $uploadedReceiptFilename = $cleanName;
                                 $isConfirmedState = 1;
-                                $initialPaymentStatus = 'pending_verification';
+                                $initialPaymentStatus = 'pending';
                             }
                         }
                     }

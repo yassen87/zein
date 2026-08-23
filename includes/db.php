@@ -73,7 +73,10 @@ function medal_ensure_orders_schema(PDO $pdo): void
         medal_ensure_column($pdo, 'orders', 'confirmed_at', 'DATETIME NULL');
         medal_ensure_column($pdo, 'orders', 'wa_conf_sent', 'TINYINT(1) NOT NULL DEFAULT 0');
         medal_ensure_column($pdo, 'orders', 'payment_method', 'VARCHAR(32) NOT NULL DEFAULT \'cod\'');
-        medal_ensure_column($pdo, 'orders', 'payment_status', 'VARCHAR(32) NOT NULL DEFAULT \'unpaid\'');
+        medal_ensure_column($pdo, 'orders', 'payment_status', 'VARCHAR(64) NOT NULL DEFAULT \'pending\'');
+        try {
+            $pdo->exec("ALTER TABLE orders MODIFY COLUMN payment_status VARCHAR(64) NOT NULL DEFAULT 'pending'");
+        } catch (\Throwable $e) {}
         medal_ensure_column($pdo, 'orders', 'paid_amount', 'DECIMAL(10,2) NOT NULL DEFAULT 0.00');
         medal_ensure_column($pdo, 'orders', 'waived_amount', 'DECIMAL(10,2) NOT NULL DEFAULT 0.00');
         medal_ensure_column($pdo, 'orders', 'delivered_at', 'DATETIME NULL');
