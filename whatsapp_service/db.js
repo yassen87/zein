@@ -233,6 +233,13 @@ async function findOrderByNumber(orderNumber) {
 }
 
 /**
+ * Alias for findOrderByNumber
+ */
+async function getOrderById(orderId) {
+    return await findOrderByNumber(orderId);
+}
+
+/**
  * Update order confirmation status and payment scope
  */
 async function updateOrderConfirmation(orderId, isConfirmed = 0, paymentScope = 'full', botStep = 'awaiting_receipt', advanceAmount = 0, remainingAmount = 0) {

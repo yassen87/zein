@@ -546,7 +546,7 @@ class WhatsAppBot {
             throw new Error('WhatsApp Bot is not connected.');
         }
 
-        const order = await db.getOrderById(orderId);
+        const order = await db.findOrderByNumber(orderId);
         if (!order) {
             throw new Error(`Order #${orderId} not found`);
         }
