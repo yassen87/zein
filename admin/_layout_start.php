@@ -115,6 +115,20 @@ $htmlDir = is_rtl() ? 'rtl' : 'ltr';
         </a>
         <?php endif; ?>
 
+        <?php if (admin_has_permission('shipping')): ?>
+        <a href="<?= esc(admin_url('shipping.php')) ?>" class="admin-nav-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+            <span>🚚 الشحن والمحافظات</span>
+        </a>
+        <?php endif; ?>
+
+        <?php if (admin_has_permission('admins') || admin_has_permission('settings')): ?>
+        <a href="<?= esc(admin_url('admins.php')) ?>" class="admin-nav-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            <span>👥 فريق العمل والموظفين</span>
+        </a>
+        <?php endif; ?>
+
         <?php if (admin_has_permission('settings')): ?>
         <a href="<?= esc(admin_url('database_manage.php')) ?>" class="admin-nav-item" style="background: rgba(212, 175, 55, 0.1); border: 1px solid rgba(212, 175, 55, 0.3); color: #d4af37; font-weight: 800;">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
@@ -305,3 +319,108 @@ function toggleNavSection(btn) {
 </script>
 
 <main class="admin-main">
+
+<!-- Live Top Header Bar -->
+<div class="admin-topbar-wrapper" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; background: #141414; border: 1px solid #262626; padding: 0.75rem 1.25rem; border-radius: 12px; flex-wrap: wrap; gap: 0.75rem;">
+    <div style="display: flex; align-items: center; gap: 10px; font-size: 0.88rem; color: #94a3b8;">
+        <span>📅 <?= date('Y-m-d') ?></span>
+        <span>•</span>
+        <span>مرحباً، <strong style="color: #f8fafc;"><?= esc($_SESSION['admin_username'] ?? 'المدير') ?></strong></span>
+        <?php if (!empty($_SESSION['admin_role'])): ?>
+            <span style="background: rgba(212,175,55,0.15); color: #d4af37; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">
+                <?= $_SESSION['admin_role'] === 'superadmin' ? 'مدير عام 👑' : 'موظف 💼' ?>
+            </span>
+        <?php endif; ?>
+    </div>
+
+    <!-- Live WhatsApp Indicator -->
+    <div style="display: flex; align-items: center; gap: 8px;">
+        <div id="wa-global-status-pill" style="display: inline-flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.4); border: 1px solid #334155; padding: 4px 12px; border-radius: 20px; font-size: 0.82rem; color: #94a3b8; transition: all 0.3s;">
+            <span id="wa-global-status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; display: inline-block;"></span>
+            <span id="wa-global-status-text">جاري فحص الواتساب...</span>
+        </div>
+        <button type="button" onclick="checkGlobalWhatsAppStatus()" title="تحديث حالة الاتصال" style="background: none; border: 1px solid #334155; color: #94a3b8; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; transition: all 0.2s;">
+            🔄
+        </button>
+    </div>
+</div>
+
+<!-- Prominent WhatsApp Disconnection Warning Banner (Hidden by default, shown via JS if disconnected) -->
+<div id="wa-disconnection-alert" style="display: none; background: linear-gradient(135deg, #7f1d1d, #991b1b); color: #fff; border: 2px solid #ef4444; border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; box-shadow: 0 10px 25px rgba(239,68,68,0.25); animation: pulseAlert 2s infinite ease-in-out;">
+    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 1.8rem;">⚠️</span>
+            <div>
+                <strong style="font-size: 1.05rem; display: block; margin-bottom: 3px;">تنبيه: خدمة بوت الواتساب غير متصلة حالياً!</strong>
+                <span style="font-size: 0.88rem; opacity: 0.95;">لن يتمكن النظام من إرسال إشعارات تغيير الحالة للعملاء حتى تتم إعادة ربط جلسة الواتساب.</span>
+            </div>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <a href="<?= esc(admin_url('whatsapp_bot.php')) ?>" style="background: #22c55e; color: #fff; text-decoration: none; padding: 0.6rem 1.2rem; border-radius: 8px; font-weight: 700; font-size: 0.88rem; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+                <span>📲 مسح QR / إعادة التفعيل</span>
+            </a>
+            <button type="button" onclick="document.getElementById('wa-disconnection-alert').style.display='none'" style="background: rgba(0,0,0,0.3); border: none; color: #fff; border-radius: 6px; padding: 0.6rem 0.8rem; cursor: pointer; font-size: 0.85rem;">
+                إخفاء المؤقت
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+@keyframes pulseAlert {
+    0%, 100% { border-color: #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
+    50% { border-color: #f87171; box-shadow: 0 0 25px rgba(239, 68, 68, 0.7); }
+}
+@keyframes pulseGreen {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+    70% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+}
+.wa-dot-connected {
+    background: #22c55e !important;
+    animation: pulseGreen 2s infinite;
+}
+.wa-dot-disconnected {
+    background: #ef4444 !important;
+}
+</style>
+
+<script>
+async function checkGlobalWhatsAppStatus() {
+    const dot = document.getElementById('wa-global-status-dot');
+    const text = document.getElementById('wa-global-status-text');
+    const pill = document.getElementById('wa-global-status-pill');
+    const alertBox = document.getElementById('wa-disconnection-alert');
+
+    if (!dot || !text) return;
+
+    try {
+        const res = await fetch('<?= esc(admin_url("ajax_check_wa_status.php")) ?>');
+        const data = await res.json();
+
+        if (data.connected && data.status === 'ready') {
+            dot.className = 'wa-dot-connected';
+            text.innerHTML = '<strong style="color:#22c55e;">بوت الواتساب: متصل</strong>';
+            pill.style.borderColor = 'rgba(34, 197, 94, 0.4)';
+            pill.style.background = 'rgba(34, 197, 94, 0.1)';
+            if (alertBox) alertBox.style.display = 'none';
+        } else {
+            dot.className = 'wa-dot-disconnected';
+            text.innerHTML = '<strong style="color:#ef4444;">بوت الواتساب: غير متصل</strong>';
+            pill.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+            pill.style.background = 'rgba(239, 68, 68, 0.1)';
+            if (alertBox) alertBox.style.display = 'block';
+        }
+    } catch (e) {
+        dot.className = 'wa-dot-disconnected';
+        text.innerHTML = '<strong style="color:#f59e0b;">فحص الواتساب: تعذر الاتصال</strong>';
+        pill.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+        if (alertBox) alertBox.style.display = 'block';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    checkGlobalWhatsAppStatus();
+    // Re-check status every 45 seconds
+    setInterval(checkGlobalWhatsAppStatus, 45000);
+});
+</script>

@@ -20,14 +20,20 @@ if ($nameEn === '' || $nameAr === '') {
     exit(t('admin_err_invalid_input'));
 }
 
+$deliveryTime = trim((string) ($_POST['delivery_time'] ?? '1-3 أيام عمل'));
+$active = isset($_POST['active']) ? 1 : 1;
+
 $pdo = medal_pdo();
 if ($pdo !== null) {
+    medal_ensure_column($pdo, 'shipping_cities', 'active', 'TINYINT(1) NOT NULL DEFAULT 1');
+    medal_ensure_column($pdo, 'shipping_cities', 'delivery_time', 'VARCHAR(100) NULL DEFAULT "1-3 أيام عمل"');
+
     if ($id > 0) {
-        $st = $pdo->prepare('UPDATE shipping_cities SET name_en=?, name_ar=?, shipping_cost=?, sort_order=? WHERE id=?');
-        $st->execute([$nameEn, $nameAr, $cost, $sortOrder, $id]);
+        $st = $pdo->prepare('UPDATE shipping_cities SET name_en=?, name_ar=?, shipping_cost=?, sort_order=?, delivery_time=?, active=? WHERE id=?');
+        $st->execute([$nameEn, $nameAr, $cost, $sortOrder, $deliveryTime, $active, $id]);
     } else {
-        $st = $pdo->prepare('INSERT INTO shipping_cities (name_en, name_ar, shipping_cost, sort_order) VALUES (?,?,?,?)');
-        $st->execute([$nameEn, $nameAr, $cost, $sortOrder]);
+        $st = $pdo->prepare('INSERT INTO shipping_cities (name_en, name_ar, shipping_cost, sort_order, delivery_time, active) VALUES (?,?,?,?,?,?)');
+        $st->execute([$nameEn, $nameAr, $cost, $sortOrder, $deliveryTime, $active]);
     }
 }
 

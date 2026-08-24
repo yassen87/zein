@@ -116,12 +116,13 @@ function admin_login(int $userId): void
     // Fetch role and permissions to store in session
     $pdo = medal_pdo();
     if ($pdo) {
-        $st = $pdo->prepare("SELECT role, permissions FROM admin_users WHERE id = ?");
+        $st = $pdo->prepare("SELECT username, role, permissions FROM admin_users WHERE id = ?");
         $st->execute([$userId]);
         $user = $st->fetch();
         if ($user) {
-            $_SESSION['admin_role'] = $user['role'];
-            $_SESSION['admin_permissions'] = $user['permissions'] ? explode(',', $user['permissions']) : [];
+            $_SESSION['admin_username'] = $user['username'] ?? 'المدير';
+            $_SESSION['admin_role'] = $user['role'] ?? 'admin';
+            $_SESSION['admin_permissions'] = !empty($user['permissions']) ? explode(',', $user['permissions']) : [];
         }
     }
 
