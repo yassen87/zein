@@ -154,7 +154,7 @@ app.post('/api/send-order', async (req, res) => {
  */
 app.post('/api/send-status-update', async (req, res) => {
     try {
-        const { order_id, status } = req.body;
+        const { order_id, status, customer_phone, customer_name, order_number, total, paid_amount, waived_amount } = req.body;
         if (!order_id || !status) {
             return res.status(400).json({ success: false, error: 'order_id and status are required.' });
         }
@@ -167,7 +167,20 @@ app.post('/api/send-status-update', async (req, res) => {
             });
         }
 
-        const result = await bot.sendOrderStatusNotification(order_id, status);
+        let orderData = null;
+        if (customer_phone) {
+            orderData = {
+                id: order_id,
+                order_number: order_number || `MED-${order_id}`,
+                customer_name: customer_name || 'عميلنا العزيز',
+                customer_phone: customer_phone,
+                total: total || 0,
+                paid_amount: paid_amount || 0,
+                waived_amount: waived_amount || 0
+            };
+        }
+
+        const result = await bot.sendOrderStatusNotification(order_id, status, orderData);
         res.json({ success: true, message: `Status update for order #${order_id} sent successfully.`, result });
     } catch (err) {
         console.error('[API send-status-update error]', err);

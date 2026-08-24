@@ -150,7 +150,13 @@ function send_whatsapp_order_status_notification(int $orderId, string $newStatus
 
         $payload = json_encode([
             'order_id' => $orderId,
-            'status' => $newStatus
+            'status' => $newStatus,
+            'order_number' => (string)($order['order_number'] ?? ('MED-' . $orderId)),
+            'customer_name' => (string)($order['customer_name'] ?? 'عميلنا العزيز'),
+            'customer_phone' => (string)($order['customer_phone'] ?? ''),
+            'total' => (float)($order['total'] ?? 0),
+            'paid_amount' => (float)($order['paid_amount'] ?? 0),
+            'waived_amount' => (float)($order['waived_amount'] ?? 0)
         ], JSON_UNESCAPED_UNICODE);
 
         $ch = curl_init($botUrl);

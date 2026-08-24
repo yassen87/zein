@@ -581,12 +581,15 @@ class WhatsAppBot {
     /**
      * Send Order Status Update message to customer on WhatsApp
      */
-    async sendOrderStatusNotification(orderId, newStatus) {
+    async sendOrderStatusNotification(orderId, newStatus, orderData = null) {
         if (this.status !== 'ready' || !this.client) {
             throw new Error('WhatsApp Bot is not connected.');
         }
 
-        const order = await db.findOrderByNumber(orderId);
+        let order = orderData;
+        if (!order) {
+            order = await db.findOrderByNumber(orderId);
+        }
         if (!order) {
             throw new Error(`Order #${orderId} not found`);
         }
