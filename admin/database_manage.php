@@ -62,12 +62,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_backup') {
 }
 
 // -------------------------------------------------------------------------
-// 2. Handle POST Actions (Import, Selective Clean, Direct SQL, Optimize)
+// Helper Function: Run SQL Import with Auto-healing
 // -------------------------------------------------------------------------
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    admin_verify_csrf();
-    $action = $_POST['form_action'] ?? '';
-
 function run_sql_import(PDO $pdo, string $fileContent): array {
     $pdo->exec('SET FOREIGN_KEY_CHECKS=0;');
     $pdo->exec('SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";');
