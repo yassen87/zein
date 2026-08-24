@@ -351,14 +351,11 @@ class WhatsAppBot {
                 return true;
             }
         } catch (sendErr) {
-            this.log('warn', `client.sendMessage failed (${sendErr.message}), trying msg.reply...`);
+            this.log('warn', `client.sendMessage failed (${sendErr.message})`);
         }
-            } catch (repErr) {
-                this.log('error', `All reply attempts failed for ${targetJid}: ${repErr.message}`);
-            }
 
-            return false;
-        }
+        return false;
+    }
 
     /**
      * Handle incoming customer messages (Silent Mode - Zero automated replies to incoming chats)
