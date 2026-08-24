@@ -320,6 +320,46 @@ class WhatsAppBot {
     }
 
     /**
+     * Format phone number to clean WhatsApp JID format
+     */
+    formatPhone(phone) {
+        if (!phone) return null;
+        let digits = String(phone).replace(/\D/g, '');
+        if (!digits) return null;
+        if (digits.startsWith('00')) digits = digits.substring(2);
+        if (digits.startsWith('01') && digits.length === 11) {
+            digits = '2' + digits;
+        } else if (digits.startsWith('1') && digits.length === 10) {
+            digits = '20' + digits;
+        }
+        if (!digits.endsWith('@c.us') && !digits.endsWith('@s.whatsapp.net')) {
+            return `${digits}@c.us`;
+        }
+        return digits;
+    }
+
+    /**
+     * Resolve valid WhatsApp JID for phone number using client or formatter
+     */
+    async resolveSendJid(phone) {
+        try {
+            const formatted = this.formatPhone(phone);
+            if (!formatted || !this.client) return formatted;
+
+            const cleanDigits = formatted.replace('@c.us', '').replace('@s.whatsapp.net', '');
+            if (typeof this.client.getNumberId === 'function') {
+                const numberId = await this.client.getNumberId(cleanDigits);
+                if (numberId && numberId._serialized) {
+                    return numberId._serialized;
+                }
+            }
+            return formatted;
+        } catch (e) {
+            return this.formatPhone(phone);
+        }
+    }
+
+    /**
      * Resilient message sender: 3-tier delivery (chat.sendMessage -> client.sendMessage -> msg.reply)
      * Works 100% reliably for WhatsApp Regular, WhatsApp Business, Enterprise, and Multi-Device accounts!
      */
