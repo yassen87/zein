@@ -184,7 +184,7 @@ app.post('/api/test-message', async (req, res) => {
         if (!phone || !message) {
             return res.status(400).json({ success: false, error: 'Phone and message are required.' });
         }
-        await bot.testSendMessage(phone, message);
+        await bot.sendMessage(phone, message);
         res.json({ success: true, message: 'Test message sent successfully.' });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
