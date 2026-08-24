@@ -130,6 +130,23 @@ require __DIR__ . '/includes/header.php';
     background: #f8fafc;
     border: 1px solid #e2e8f0;
 }
+@media (max-width: 768px) {
+    .order-card-header {
+        padding: 1.5rem 1rem !important;
+    }
+    .wa-hero-box {
+        flex-direction: column !important;
+        text-align: center !important;
+        padding: 1.25rem 1rem !important;
+        gap: 1rem !important;
+    }
+    .btn-wa-action {
+        width: 100% !important;
+        justify-content: center !important;
+        padding: 0.85rem 1rem !important;
+        font-size: 1rem !important;
+    }
+}
 .stepper-wrap {
     display: flex;
     justify-content: space-between;

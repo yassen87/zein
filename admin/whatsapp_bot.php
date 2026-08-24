@@ -18,6 +18,20 @@ if ($pdo !== null) {
     } catch (\Throwable $e) {}
 }
 
+// Fetch uploaded receipts directly from Hostinger DB
+$receiptsList = [];
+if ($pdo !== null) {
+    try {
+        $rSt = $pdo->prepare("SELECT id, order_number, customer_name, customer_phone, total, payment_method, payment_receipt, payment_reference, payment_status, created_at 
+                              FROM orders 
+                              WHERE (payment_receipt IS NOT NULL AND payment_receipt != '') 
+                                 OR (payment_reference IS NOT NULL AND payment_reference != '') 
+                              ORDER BY id DESC LIMIT 50");
+        $rSt->execute();
+        $receiptsList = $rSt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (\Throwable $e) {}
+}
+
 // Check if Node bot service is reachable
 $botOnline = false;
 $botStatus = 'disconnected';
@@ -55,7 +69,7 @@ function formatUptime(float $seconds): string {
     $hours = (int)($mins / 60);
     $minsPart = $mins % 60;
     if ($hours < 24) return $hours . " ساعة و " . $minsPart . " دقيقة";
-    $days = (int)$hours / 24;
+    $days = (int)($hours / 24);
     $hoursPart = $hours % 24;
     return (int)$days . " يوم و " . $hoursPart . " ساعة";
 }
@@ -65,7 +79,7 @@ function formatUptime(float $seconds): string {
 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:2rem; border-bottom:1px solid #27272a; padding-bottom:1.5rem;">
     <div>
         <h1 style="font-size:1.8rem; font-weight:800; margin-bottom:5px; color:#f8fafc;">🤖 مركز التحكم وإعدادات بوت الواتساب</h1>
-        <p class="admin-lead" style="margin-bottom:0;">التحقق من حالة الاتصال، إرسال رسائل اختبارية، وإدارة جلسة الـ QR Code</p>
+        <p class="admin-lead" style="margin-bottom:0;">التحقق من حالة الاتصال، إرسال رسائل اختبارية، واستعراض إيصالات التحويل</p>
     </div>
     <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
         <a href="<?= esc($botUrl) ?>" target="_blank" class="admin-btn" style="background:linear-gradient(135deg, #22c55e 0%, #15803d 100%); color:#fff; border:none; padding:0.75rem 1.25rem; border-radius:10px; font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 12px rgba(34,197,94,0.25);">
@@ -116,16 +130,83 @@ function formatUptime(float $seconds): string {
     <!-- Watchdog & Uptime -->
     <div class="admin-card" style="margin:0; padding:1.5rem; border:1px solid #27272a; background:#18181b; border-radius:14px;">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem;">
-            <span style="font-size:1.3rem;">⏳</span>
-            <span style="font-size:0.75rem; background:#27272a; color:#a1a1aa; padding:2px 8px; border-radius:6px; font-weight:700;">UPTIME MONITOR</span>
+            <span style="font-size:1.3rem;">🖼️</span>
+            <span style="font-size:0.75rem; background:#27272a; color:#a1a1aa; padding:2px 8px; border-radius:6px; font-weight:700;">RECEIPTS GALLERY</span>
         </div>
-        <h3 style="margin:0 0 6px; font-size:0.9rem; color:#94a3b8;">مدة التشغيل المتواصل</h3>
-        <div style="font-size:1.3rem; font-weight:800; color:#e4e4e7;">
-            <?= $botUptime > 0 ? formatUptime($botUptime) : '0 ثانية' ?>
+        <h3 style="margin:0 0 6px; font-size:0.9rem; color:#94a3b8;">إجمالي الإيصالات المستلمة</h3>
+        <div style="font-size:1.4rem; font-weight:800; color:#d4af37;">
+            <?= count($receiptsList) ?> إيصال تحويل 📸
         </div>
-        <p style="font-size:0.8rem; color:#71717a; margin-top:8px; margin-bottom:0;">الإصدار الحالي: <code>v2.6.0-Hostinger</code></p>
+        <p style="font-size:0.8rem; color:#71717a; margin-top:8px; margin-bottom:0;">من المتجر والموقع مباشرة</p>
     </div>
 
+</div>
+
+<!-- Direct Hostinger Receipt Gallery Section -->
+<div class="admin-card" style="margin-bottom:2rem; padding:1.5rem; border-radius:16px; background:#18181b; border:1px solid #27272a;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; border-bottom:1px solid #27272a; padding-bottom:1rem;">
+        <div>
+            <h3 style="margin:0; font-size:1.2rem; font-weight:800; color:#f4f4f5; display:flex; align-items:center; gap:8px;">
+                <span>📸</span> معرض إيصالات التحويل المستلمة (تحديث مباشر)
+            </h3>
+            <p style="margin:4px 0 0; font-size:0.85rem; color:#a1a1aa;">
+                استعراض كافة الإيصالات المرفوعة من العملاء عند التشيك أوت أو المحولة عبر الواتساب
+            </p>
+        </div>
+        <span style="font-size:0.8rem; background:rgba(212,175,55,0.15); color:#d4af37; font-weight:800; padding:4px 12px; border-radius:20px; border:1px solid rgba(212,175,55,0.3);">
+            <?= count($receiptsList) ?> صورة
+        </span>
+    </div>
+
+    <?php if (empty($receiptsList)): ?>
+        <div style="text-align:center; padding:3rem 1rem; background:#09090b; border-radius:12px; border:1px dashed #27272a;">
+            <div style="font-size:2.5rem; margin-bottom:0.5rem;">📥</div>
+            <h4 style="margin:0 0 6px; font-size:1rem; color:#f4f4f5;">لا توجد إيصالات تحويل مرفوعة حتى الآن</h4>
+            <p style="margin:0; font-size:0.85rem; color:#71717a;">ستظهر صور تحويل العطور فور رفعها عبر صفحة الدفع أو محادثات البوت هنا تلقائياً</p>
+        </div>
+    <?php else: ?>
+        <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:1.25rem;">
+            <?php foreach ($receiptsList as $rc): ?>
+                <?php 
+                    $cleanFile = ltrim((string)$rc['payment_receipt'], '/');
+                    $cleanFile = preg_replace('/^assets\/uploads\/receipts\//', '', $cleanFile);
+                    $imgUrl = !empty($cleanFile) ? url('assets/uploads/receipts/' . $cleanFile) : '';
+                ?>
+                <div style="background:#09090b; border:1px solid #27272a; border-radius:14px; overflow:hidden; display:flex; flex-direction:column; transition:all 0.2s ease;">
+                    <div style="height:180px; background:#18181b; position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center; cursor:pointer;" onclick="openReceiptModal('<?= esc($imgUrl) ?>', '<?= esc((string)$rc['order_number']) ?>', '<?= esc((string)$rc['customer_name']) ?>', '<?= esc((string)$rc['customer_phone']) ?>')">
+                        <?php if (!empty($imgUrl)): ?>
+                            <img src="<?= esc($imgUrl) ?>" alt="Receipt" style="width:100%; height:100%; object-fit:cover;">
+                        <?php else: ?>
+                            <div style="text-align:center; color:#a1a1aa; font-size:0.85rem;">
+                                🔢 رقم عملية مرجعي:<br>
+                                <strong style="color:#d4af37; font-size:0.95rem; font-family:monospace;"><?= esc((string)$rc['payment_reference']) ?></strong>
+                            </div>
+                        <?php endif; ?>
+                        <div style="position:absolute; top:8px; right:8px; background:rgba(0,0,0,0.75); color:#d4af37; padding:2px 8px; border-radius:6px; font-size:0.75rem; font-weight:800; backdrop-filter:blur(4px);">
+                            #<?= esc((string)$rc['order_number']) ?>
+                        </div>
+                    </div>
+                    <div style="padding:1rem; flex:1; display:flex; flex-direction:column; justify-content:space-between; gap:8px;">
+                        <div>
+                            <div style="font-weight:700; color:#f4f4f5; font-size:0.9rem; margin-bottom:2px;">
+                                👤 <?= esc((string)$rc['customer_name']) ?>
+                            </div>
+                            <div style="font-size:0.8rem; color:#a1a1aa; direction:ltr; text-align:right;">
+                                📞 <?= esc((string)$rc['customer_phone']) ?>
+                            </div>
+                            <div style="font-size:0.88rem; font-weight:800; color:#10b981; margin-top:4px;">
+                                💰 <?= number_format((float)$rc['total'], 2) ?> ج.م
+                            </div>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #27272a; padding-top:8px; font-size:0.78rem;">
+                            <span style="color:#71717a;"><?= date('Y-m-d H:i', strtotime($rc['created_at'])) ?></span>
+                            <a href="<?= esc(admin_url('order_view.php?id=' . (int)$rc['id'])) ?>" target="_blank" style="color:#d4af37; font-weight:700; text-decoration:none;">عرض الطلب ↗</a>
+                        </div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
 </div>
 
 <!-- Diagnostics / Test Message Tool -->
@@ -206,7 +287,36 @@ function formatUptime(float $seconds): string {
     </iframe>
 </div>
 
+<!-- Receipt Modal -->
+<div id="receiptModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); backdrop-filter:blur(6px); z-index:99999; align-items:center; justify-content:center; padding:1.5rem;" onclick="closeReceiptModal()">
+    <div style="background:#18181b; border:1px solid #27272a; border-radius:16px; max-width:600px; width:100%; overflow:hidden; box-shadow:0 20px 50px rgba(0,0,0,0.5);" onclick="event.stopPropagation()">
+        <div style="padding:1rem 1.25rem; border-bottom:1px solid #27272a; display:flex; justify-content:space-between; align-items:center;">
+            <strong style="color:#f4f4f5;" id="modalOrderTitle">إيصال التحويل</strong>
+            <button type="button" onclick="closeReceiptModal()" style="background:none; border:none; color:#a1a1aa; font-size:1.2rem; cursor:pointer;">✕</button>
+        </div>
+        <div style="padding:1rem; text-align:center; background:#09090b;">
+            <img id="modalImg" src="" style="max-height:65vh; max-width:100%; object-fit:contain; border-radius:8px;">
+        </div>
+        <div style="padding:1rem 1.25rem; border-top:1px solid #27272a; display:flex; justify-content:space-between; align-items:center; font-size:0.88rem;">
+            <span id="modalCustomerInfo" style="color:#a1a1aa;"></span>
+            <a id="modalDownloadBtn" href="" target="_blank" download style="color:#d4af37; font-weight:700; text-decoration:none;">تحميل الصورة ⬇</a>
+        </div>
+    </div>
+</div>
+
 <script>
+function openReceiptModal(url, orderNum, name, phone) {
+    if (!url) return;
+    document.getElementById('modalImg').src = url;
+    document.getElementById('modalOrderTitle').innerText = 'إيصال طلب #' + orderNum;
+    document.getElementById('modalCustomerInfo').innerText = 'العميل: ' + name + ' (' + phone + ')';
+    document.getElementById('modalDownloadBtn').href = url;
+    document.getElementById('receiptModal').style.display = 'flex';
+}
+function closeReceiptModal() {
+    document.getElementById('receiptModal').style.display = 'none';
+}
+
 async function sendTestMessage(e) {
     e.preventDefault();
     const btn = document.getElementById('btn-test-submit');

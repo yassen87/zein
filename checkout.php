@@ -747,6 +747,10 @@ require __DIR__ . '/includes/header.php';
                                 </div>
 
                                 <div id="receipt_preview_container" style="display:none; margin-top:0.5rem;">
+                                    <img id="receipt_preview_img" src="" alt="معاينة الإيصال" style="max-height:160px; border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.1); margin-bottom:0.5rem;">
+                                    <div style="font-size:0.85rem; color:#10b981; font-weight:bold;">✓ تم اختيار صورة الإيصال بنجاح</div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Main Submit Button inside form (Mobile & Desktop) -->
