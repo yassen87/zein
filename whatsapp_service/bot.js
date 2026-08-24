@@ -674,16 +674,18 @@ ${remainingLine}
             throw new Error('WhatsApp Bot is not connected. Please scan QR code first.');
         }
 
-        // Fetch distinct customer phone numbers from clients and orders
-        const clientsQuery = await db.query(
-            `SELECT DISTINCT phone FROM (
-                SELECT phone FROM clients WHERE phone IS NOT NULL AND phone != ''
-                UNION 
-                SELECT customer_phone as phone FROM orders WHERE customer_phone IS NOT NULL AND customer_phone != ''
-            ) as t WHERE phone REGEXP '^[0-9+]{8,15}$' LIMIT 500`
-        );
+        let recipients = product.recipients && Array.isArray(product.recipients) ? product.recipients : [];
+        if (recipients.length === 0) {
+            const clientsQuery = await db.query(
+                `SELECT DISTINCT phone FROM (
+                    SELECT phone FROM clients WHERE phone IS NOT NULL AND phone != ''
+                    UNION 
+                    SELECT customer_phone as phone FROM orders WHERE customer_phone IS NOT NULL AND customer_phone != ''
+                ) as t WHERE phone REGEXP '^[0-9+]{8,15}$' LIMIT 500`
+            );
+            recipients = (clientsQuery || []).map(r => r.phone).filter(Boolean);
+        }
 
-        const recipients = (clientsQuery || []).map(r => r.phone).filter(Boolean);
         this.log('broadcast', `Starting new product broadcast for "${product.nameAr || product.nameEn}" to ${recipients.length} customers...`);
 
         const nameAr = product.nameAr || product.name || 'عطر فاخر جديد';

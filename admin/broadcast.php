@@ -104,6 +104,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $prod = $pSt->fetch();
 
         if ($prod) {
+            $recipSt = $pdo->query("SELECT DISTINCT phone FROM (SELECT phone FROM clients WHERE phone IS NOT NULL AND phone != '' UNION SELECT customer_phone as phone FROM orders WHERE customer_phone IS NOT NULL AND customer_phone != '') as t WHERE phone REGEXP '^[0-9+]{8,15}$' LIMIT 500");
+            $recipientsList = $recipSt ? ($recipSt->fetchAll(PDO::FETCH_COLUMN) ?: []) : [];
+
             $payload = [
                 'productId' => $prod['id'],
                 'nameAr' => $prod['name_ar'],
@@ -114,7 +117,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 'price' => (float)($prod['min_price'] ?? 0),
                 'slug' => $prod['slug'],
                 'productUrl' => storefront_url('product.php?id=' . (int)$prod['id']),
-                'customMessage' => $customMessage
+                'customMessage' => $customMessage,
+                'recipients' => $recipientsList
             ];
             $broadcastResult = broadcast_whatsapp_new_product($payload);
         }
