@@ -35,6 +35,7 @@ function medal_pdo(): ?PDO
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci",
         ]);
+        medal_ensure_orders_schema($pdo);
         return $pdo;
     } catch (PDOException $e) {
         error_log('Error in db.php medal_pdo connection: ' . $e->getMessage());
@@ -88,9 +89,12 @@ function medal_ensure_orders_schema(PDO $pdo): void
         medal_ensure_column($pdo, 'order_items', 'variant_label_snapshot', 'VARCHAR(255) NULL');
         medal_ensure_column($pdo, 'order_items', 'variant_id', 'INT(10) UNSIGNED NULL');
 
+        medal_ensure_column($pdo, 'orders', 'payment_scope', "VARCHAR(32) NOT NULL DEFAULT 'full'");
+        medal_ensure_column($pdo, 'orders', 'advance_amount', "DECIMAL(10,2) NOT NULL DEFAULT 0.00");
+        medal_ensure_column($pdo, 'orders', 'remaining_amount', "DECIMAL(10,2) NOT NULL DEFAULT 0.00");
         medal_ensure_column($pdo, 'orders', 'payment_reference', 'VARCHAR(100) NULL');
         medal_ensure_column($pdo, 'orders', 'payment_receipt', 'VARCHAR(255) NULL');
-        medal_ensure_column($pdo, 'orders', 'ocr_status', 'VARCHAR(50) NULL DEFAULT \'none\'');
+        medal_ensure_column($pdo, 'orders', 'ocr_status', "VARCHAR(50) NULL DEFAULT 'none'");
 
         // Ensure bank_transactions table
         $pdo->exec("CREATE TABLE IF NOT EXISTS `bank_transactions` (

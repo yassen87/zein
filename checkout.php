@@ -747,10 +747,13 @@ require __DIR__ . '/includes/header.php';
                                 </div>
 
                                 <div id="receipt_preview_container" style="display:none; margin-top:0.5rem;">
-                                    <img id="receipt_preview_img" src="" alt="معاينة الإيصال" style="max-height:160px; border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.1); margin-bottom:0.5rem;">
-                                    <div style="font-size:0.85rem; color:#10b981; font-weight:bold;">✓ تم اختيار صورة الإيصال بنجاح</div>
-                                </div>
-                            </div>
+                        </div>
+
+                        <!-- Main Submit Button inside form (Mobile & Desktop) -->
+                        <div style="margin-top: 1.5rem;">
+                            <button type="submit" id="btn-main-submit" class="neo-submit" style="width:100%; font-size:1.1rem; padding:1.1rem; font-weight:800; background:linear-gradient(135deg, #d4af37 0%, #b45309 100%); color:#fff; border:none; border-radius:12px; cursor:pointer; box-shadow:0 6px 20px rgba(212, 175, 55, 0.3); transition:all 0.3s ease;">
+                                🛍️ <?= esc(t('checkout_complete_order')) ?>
+                            </button>
                         </div>
 
                         <style>
@@ -908,6 +911,27 @@ require __DIR__ . '/includes/header.php';
                                 reader.readAsDataURL(compressedFile);
                             }
                         }
+
+                        // Prevent double form submission
+                        document.addEventListener('DOMContentLoaded', function() {
+                            const form = document.getElementById('main-checkout-form');
+                            if (form) {
+                                form.addEventListener('submit', function(e) {
+                                    if (form.getAttribute('data-submitting') === 'true') {
+                                        e.preventDefault();
+                                        return false;
+                                    }
+                                    form.setAttribute('data-submitting', 'true');
+                                    const btns = document.querySelectorAll('.neo-submit');
+                                    btns.forEach(btn => {
+                                        btn.disabled = true;
+                                        btn.style.opacity = '0.7';
+                                        btn.style.cursor = 'not-allowed';
+                                        btn.innerHTML = '⏳ جاري تأكيد وتجهيز الطلب...';
+                                    });
+                                });
+                            }
+                        });
                         </script>
                     </form>
                 </div>
