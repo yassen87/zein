@@ -353,23 +353,15 @@ class WhatsAppBot {
         } catch (sendErr) {
             this.log('warn', `client.sendMessage failed (${sendErr.message}), trying msg.reply...`);
         }
-
-        // Tier 3: Send via msg.reply
-        try {
-            if (typeof msg.reply === 'function') {
-                await msg.reply(text);
-                this.log('outbound', `✓ Sent reply via msg.reply to ${targetJid}`);
-                return true;
+            } catch (repErr) {
+                this.log('error', `All reply attempts failed for ${targetJid}: ${repErr.message}`);
             }
-        } catch (repErr) {
-            this.log('error', `All reply attempts failed for ${targetJid}: ${repErr.message}`);
+
+            return false;
         }
 
-        return false;
-    }
-
     /**
-     * Handle incoming customer messages & replies (1, 2, 3, Images)
+     * Handle incoming customer messages (Silent Mode - Zero automated replies to incoming chats)
      */
     async handleIncomingMessage(msg) {
         try {
@@ -379,7 +371,7 @@ class WhatsAppBot {
             const msgId = msg.id?._serialized || msg.id?.id;
             if (msgId) {
                 if (this.processedMessageIds.has(msgId)) {
-                    return; // Prevent duplicate execution!
+                    return; // Prevent duplicate processing
                 }
                 this.processedMessageIds.add(msgId);
                 if (this.processedMessageIds.size > 2000) {
@@ -407,10 +399,6 @@ class WhatsAppBot {
                 }
             } catch (cErr) {}
 
-            const digitsKeyFromSender = this.getDigitsKey(senderJid);
-            const digitsKeyFromReal = this.getDigitsKey(realNumber);
-            
-            // Extract text from regular, caption, or business interactive payload
             const rawBody = (
                 msg.body || 
                 msg.caption || 
@@ -421,133 +409,15 @@ class WhatsAppBot {
                 msg.selectedRowId || 
                 ''
             ).trim();
-            const body = rawBody.toLowerCase();
 
             this.log('inbound', `Received from ${senderJid} (real: ${realNumber}): "${rawBody || '[Media/Image]'}"`);
 
-            // 1. Retrieve order state from memory or database
-            let stateObj = this.userStates.get(senderJid) ||
-                           this.userStates.get(realNumber) ||
-                           this.userStates.get(digitsKeyFromReal) || 
-                           this.userStates.get(digitsKeyFromSender);
-
-            let order = null;
-
-            // Check if user's text contains an explicit order number (e.g. from website fallback link or manual query)
-            const cleanBody = rawBody.replace(/[\u200E\u200F\u202A-\u202E*_\~`]/g, ' ').trim();
-            const orderRefMatch = cleanBody.match(/MED-[A-Za-z0-9]+/i) || cleanBody.match(/#(\d{1,8})/);
-            if (orderRefMatch) {
-                const matchedRef = orderRefMatch[0].replace('#', '').trim();
-                const matchedOrder = await db.findOrderByNumber(matchedRef);
-                if (matchedOrder) {
-                    order = matchedOrder;
-                    this.log('inbound', `✓ Matched order ${order.order_number} directly from text reference "${matchedRef}"`);
-                }
-            }
-
-            if (!order && stateObj && stateObj.orderId) {
-                order = await db.findOrderByNumber(stateObj.orderId);
-            }
-
-            if (!order && realNumber) {
-                order = await db.findLatestOrderByPhone(realNumber);
-            }
-
-            if (!order && senderJid) {
-                order = await db.findLatestOrderByPhone(senderJid);
-            }
-
-            // Universal Fallback: if user sent a choice (1, 2, 3, or receipt image) and order is not found yet, get latest pending order
-            const isMenuChoice = (body === '1' || body === '١' || body === '2' || body === '٢' || body === '3' || body === '٣' || body.includes('تأكيد') || body.includes('تاكيد') || msg.hasMedia || cleanBody.includes('MED-') || cleanBody.includes('طلب'));
-            if (!order && isMenuChoice) {
-                order = await db.findLatestPendingOrder();
-                if (order) {
-                    this.log('inbound', `✓ Attached incoming customer action to latest pending order ${order.order_number} (ID: ${order.id})`);
-                }
-            }
-
-            // If still no order exists anywhere
-            if (!order) {
-                // Friendly greeting for general inquiries without active orders
-                if (body.includes('مرحبا') || body.includes('سلام') || body.includes('hello') || body.includes('hi') || body.includes('صباح') || body.includes('مساء')) {
-                    const welcomeMsg = 
-`🌸 *أهلاً بك في متجر زين للعطور* 🌸
-
-يسعدنا تواصلك معنا! ✨
-🛍️ لتصفح أفخر العطور والعروض الخاصة:
-🌐 *https://zeinperfumes.com*
-
-💬 للاستفسارات وطلب المساعدة، يمكنك كتابة رسالتك وسيقوم فريق خدمة العملاء بالرد عليك قريباً.`;
-                    await this.sendSafeReply(msg, welcomeMsg);
-                    return;
-                }
-
-                // Casual / normal chat: do not hijack so staff can chat freely
-                this.log('inbound', `No active order found for ${senderJid} (real: ${realNumber}). Leaving for human staff.`);
-                return;
-            }
-
-            if (order) {
-                stateObj = {
-                    orderId: order.id,
-                    orderNumber: order.order_number,
-                    customerName: order.customer_name,
-                    total: parseFloat(order.total || 0).toFixed(2),
-                    shippingCost: parseFloat(order.shipping_cost || 0).toFixed(2),
-                    state: (stateObj && stateObj.orderId === order.id) ? (stateObj.state || order.bot_step || 'menu') : (order.bot_step || 'menu')
-                };
-                if (digitsKeyFromReal) this.userStates.set(digitsKeyFromReal, stateObj);
-                if (digitsKeyFromSender) this.userStates.set(digitsKeyFromSender, stateObj);
-                this.userStates.set(senderJid, stateObj);
-                if (realNumber) this.userStates.set(realNumber, stateObj);
-            }
-
-            const orderNumber = order?.order_number || stateObj?.orderNumber || 'الطلب';
-            const totalNum = parseFloat(order?.total || stateObj?.total || 0);
-            const shippingCostNum = parseFloat(order?.shipping_cost || stateObj?.shippingCost || 0);
-            const remainingForShippingOnly = Math.max(0, totalNum - shippingCostNum).toFixed(2);
-            const totalStr = totalNum.toFixed(2);
-            const shippingCostStr = shippingCostNum.toFixed(2);
-            const customerName = order?.customer_name || stateObj?.customerName || 'عميلنا العزيز';
-
-            const settings = await db.getSettings();
-            const instapayUser = settings.instapay_username || 'ahmedfayoumy1@instapay';
-            const instapayUrl = settings.instapay_url || 'https://ipn.eg/S/ahmedfayoumy1/instapay/7H0dWv';
-            const vodafoneNumber = settings.vodafone_cash_number || '01005250838';
-
-            // ── INSTANT TRIGGER: If user clicked the WhatsApp button from the website ──
-            if (rawBody.includes('تم استلام طلبك') || rawBody.includes('تم تسجيل طلبك') || (orderRefMatch && rawBody.includes('🌸'))) {
-                stateObj.state = 'awaiting_scope_choice';
-                this.userStates.set(senderJid, stateObj);
-                if (digitsKeyFromReal) this.userStates.set(digitsKeyFromReal, stateObj);
-
-                const scopePromptMsg = 
-`👑 *أهلاً بك يا أ/ ${customerName} في متجر زين للعطور!* 🌸
-📦 بخصوص طلبك رقم: *${orderNumber}*
-💰 إجمالي المبلغ: *${totalStr} ج.م*
-
-نظراً لتجهيز العطور وحجز الشحنة، يرجى تحديد طريقة التحويل:
-
-1️⃣ - *دفع مصاريف الشحن فقط مقدم (${shippingCostStr} ج.م)* 🚚
-_(ودفع باقي قيمة العطور ${remainingForShippingOnly} ج.م عند الاستلام من المندوب)_
-
-2️⃣ - *دفع إجمالي الطلب بالكامل (${totalStr} ج.م)* 💳
-_(شامل المنتجات ومصاريف الشحن بدون أي دفع عند الاستلام)_
-─────────────────────
-_رد برقم (1) لدفع الشحن فقط، أو (2) لدفع كامل المبلغ._`;
-
-                await this.sendSafeReply(msg, scopePromptMsg);
-                return;
-            }
-
-            // ── 2. DETECT IMAGES / MEDIA / PAYMENT RECEIPT SCREENSHOTS ──
+            // Silent receipt saving: If customer sent an image/document, quietly save it to receipts for admin review
             const isMediaMessage = msg.hasMedia || msg.type === 'image' || msg.type === 'document' || msg.type === 'sticker';
-            
             if (isMediaMessage) {
-                this.log('inbound', `Customer sent receipt/screenshot for order ${orderNumber}. Downloading media...`);
+                let order = await db.findLatestPendingOrder() || await db.findLatestOrderByPhone(realNumber) || await db.findLatestOrderByPhone(senderJid);
                 let filename = null;
 
-                // Retry media download up to 4 times to ensure whatsapp-web.js has decrypted media
                 for (let attempt = 1; attempt <= 4; attempt++) {
                     try {
                         const media = await msg.downloadMedia();
@@ -558,7 +428,7 @@ _رد برقم (1) لدفع الشحن فقط، أو (2) لدفع كامل ال�
                             const filePath = path.join(this.receiptsDir, filename);
 
                             fs.writeFileSync(filePath, Buffer.from(media.data, 'base64'));
-                            this.log('receipt', `✓ Successfully saved receipt screenshot to: ${filePath}`);
+                            this.log('receipt', `✓ Silently saved receipt screenshot to: ${filePath}`);
                             break;
                         }
                     } catch (dlErr) {
@@ -569,207 +439,22 @@ _رد برقم (1) لدفع الشحن فقط، أو (2) لدفع كامل ال�
                     }
                 }
 
-                if (!filename) {
-                    filename = `receipt_${order?.id || 'wa'}_${Date.now()}.jpg`;
-                    this.log('warn', `Media data was empty, recorded receipt marker: ${filename}`);
-                }
-
-                // Update database: receipt saved in pending verification (is_confirmed remains 0 until staff confirms)
-                if (order?.id) {
+                if (filename && order?.id) {
                     await db.saveOrderReceipt(order.id, filename);
-                }
-
-                if (stateObj) stateObj.state = 'receipt_received';
-                if (digitsKeyFromReal) this.userStates.set(digitsKeyFromReal, { ...stateObj, state: 'receipt_received' });
-
-                const replyText = 
-`✅ *تم استلام صورة التحويل بنجاح!*
-
-📦 طلب رقم: *${orderNumber}*
-⏳ الحالة: *في انتظار مراجعة وتأكيد التحويل من خدمة العملاء.*
-
-🌸 سيصلك إشعار فوري هنا على الواتساب فور اعتماد الدفع وبدء تجهيز شحنتك. شكراً لاختيارك *زين للعطور*! ✨`;
-
-                await this.sendSafeReply(msg, replyText);
-
-                if (this.io) {
-                    this.io.emit('receipt_uploaded', {
-                        orderId: order?.id,
-                        orderNumber,
-                        filename,
-                        url: `assets/uploads/receipts/${filename}`,
-                        timestamp: new Date().toISOString()
-                    });
-                }
-                return;
-            }
-
-            // ── 3. NORMALIZE USER CHOICES ──
-            const is1 = (body === '1' || body === '١' || body.includes('تأكيد') || body.includes('تاكيد') || body === 'confirm');
-            const is2 = (body === '2' || body === '٢' || body.includes('إلغاء') || body.includes('الغاء') || body === 'cancel');
-            const is3 = (body === '3' || body === '٣' || body.includes('تعديل') || body === 'edit');
-            
-            const isShippingOnly = (body === '1' || body === '١' || body.includes('شحن') || body.includes('مصاريف') || body.includes('shipping'));
-            const isFullAmount = (body === '2' || body === '٢' || body.includes('كامل') || body.includes('كل') || body.includes('full'));
-
-            // ── SUB-STEP: Customer Choosing Payment Scope (Shipping Only vs Full Amount) ──
-            if (stateObj?.state === 'awaiting_scope_choice') {
-                if (isShippingOnly) {
-                    // Option 1: Shipping Cost Only — is_confirmed remains 0 until actual payment
-                    if (order?.id) {
-                        await db.updateOrderConfirmation(order.id, 0, 'shipping_only', 'awaiting_receipt', shippingCostNum, parseFloat(remainingForShippingOnly));
+                    if (this.io) {
+                        this.io.emit('receipt_uploaded', {
+                            orderId: order.id,
+                            orderNumber: order.order_number,
+                            filename,
+                            url: `assets/uploads/receipts/${filename}`,
+                            timestamp: new Date().toISOString()
+                        });
                     }
-                    if (stateObj) {
-                        stateObj.state = 'awaiting_receipt';
-                        stateObj.paymentScope = 'shipping_only';
-                    }
-                    if (digitsKeyFromReal) this.userStates.set(digitsKeyFromReal, { ...stateObj, state: 'awaiting_receipt', paymentScope: 'shipping_only' });
-
-                    const shippingPayMsg = 
-`💳 *بيانات تحويل مصاريف الشحن (زين للعطور)*:
-
-🟣 *إنستاباي (InstaPay):*
-▫️ المعرّف: \`${instapayUser}\`
-🔗 *رابط الدفع المباشر بنقرة واحدة:*
-${instapayUrl}
-
-🔴 *محفظة كاش (فودافون كاش / اتصالات / أورانج / وي):*
-▫️ الرقم: \`${vodafoneNumber}\`
-─────────────────────
-💵 *المبلغ المطلوب تحويله الآن:* *${shippingCostStr} ج.م* (قيمة الشحن)
-🚚 *المبلغ المتبقي عند الاستلام:* *${remainingForShippingOnly} ج.م*
-
-📸 *لتأكيد الحجز وتجهيز الشحنة فوراً:*
-1️⃣ أرسل *صورة إيصال التحويل (Screenshot)* 📸 هنا
-2️⃣ *أو* اكتب *الرقم المرجعي / كود العملية* 🔢 هنا في الشات.`;
-
-                    await this.sendSafeReply(msg, shippingPayMsg);
-                    return;
-                } else if (isFullAmount) {
-                    // Option 2: Full Order Amount — is_confirmed remains 0 until actual payment
-                    if (order?.id) {
-                        await db.updateOrderConfirmation(order.id, 0, 'full', 'awaiting_receipt', totalNum, 0);
-                    }
-                    if (stateObj) {
-                        stateObj.state = 'awaiting_receipt';
-                        stateObj.paymentScope = 'full';
-                    }
-                    if (digitsKeyFromReal) this.userStates.set(digitsKeyFromReal, { ...stateObj, state: 'awaiting_receipt', paymentScope: 'full' });
-
-                    const fullPayMsg = 
-`💳 *بيانات تحويل كامل قيمة الطلب (زين للعطور)*:
-
-🟣 *إنستاباي (InstaPay):*
-▫️ المعرّف: \`${instapayUser}\`
-🔗 *رابط الدفع المباشر بنقرة واحدة:*
-${instapayUrl}
-
-🔴 *محفظة كاش (فودافون كاش / اتصالات / أورانج / وي):*
-▫️ الرقم: \`${vodafoneNumber}\`
-─────────────────────
-💵 *المبلغ المطلوب تحويله بالكامل:* *${totalStr} ج.م*
-🎉 _(شامل المنتجات والشحن، ولن تدفع أي مبالغ للمندوب عند الاستلام)_
-
-📸 *لتأكيد الحجز وتجهيز الشحنة فوراً:*
-1️⃣ أرسل *صورة إيصال التحويل (Screenshot)* 📸 هنا
-2️⃣ *أو* اكتب *الرقم المرجعي / كود العملية* 🔢 هنا في الشات.`;
-
-                    await this.sendSafeReply(msg, fullPayMsg);
-                    return;
                 }
             }
 
-            // ── STEP 1: INITIAL CONFIRMATION SELECTION (Choice 1) ──
-            if (is1 && stateObj?.state !== 'awaiting_scope_choice') {
-                if (order?.id) {
-                    await db.updateOrderConfirmation(order.id, 0, 'full', 'awaiting_scope_choice', 0, 0);
-                }
-                if (stateObj) stateObj.state = 'awaiting_scope_choice';
-                if (digitsKeyFromReal) this.userStates.set(digitsKeyFromReal, { ...stateObj, state: 'awaiting_scope_choice' });
-
-                const scopePromptMsg = 
-`👑 *شكراً لاختيارك زين للعطور يا أ/ ${customerName}!*
-📦 طلبك رقم: *${orderNumber}*
-
-نظراً لتجهيز العطور وحجز الشحنة، يرجى تحديد طريقة التحويل:
-
-1️⃣ - *دفع مصاريف الشحن فقط مقدم (${shippingCostStr} ج.م)* 🚚
-_(ودفع باقي قيمة العطور ${remainingForShippingOnly} ج.م عند الاستلام من المندوب)_
-
-2️⃣ - *دفع إجمالي الطلب بالكامل (${totalStr} ج.م)* 💳
-_(شامل المنتجات ومصاريف الشحن بدون أي دفع عند الاستلام)_
-─────────────────────
-_رد برقم (1) لدفع الشحن فقط، أو (2) لدفع كامل المبلغ._`;
-
-                await this.sendSafeReply(msg, scopePromptMsg);
-                return;
-            }
-
-            // ── OPTION 2: CANCEL ORDER ──
-            if (is2) {
-                if (order?.id) await db.cancelOrder(order.id);
-                if (stateObj) stateObj.state = 'cancelled';
-                if (digitsKeyFromReal) this.userStates.set(digitsKeyFromReal, { ...stateObj, state: 'cancelled' });
-
-                const cancelResponse = 
-`❌ *تم إلغاء طلبك رقم (${orderNumber}) بنجاح.*
-
-نتمنى رؤيتك مجدداً قريباً في *متجر زين للعطور*! 🌸
-يمكنك تصفح أحدث العطور والعروض في أي وقت عبر موقعنا:
-🌐 *https://zeinperfumes.com*`;
-
-                await this.sendSafeReply(msg, cancelResponse);
-                return;
-            }
-
-            // ── OPTION 3: EDIT ORDER ──
-            if (is3) {
-                const editResponse = 
-`✏️ *لتعديل طلبك رقم (${orderNumber}):*
-
-يرجى كتابة التعديل المطلوب هنا مباشرة (مثل تعديل العنوان، أو إضافة/تغيير عطر)، وسيقوم أحد ممثلي خدمة العملاء بمساعدتك فوراً. 🌸`;
-
-                await this.sendSafeReply(msg, editResponse);
-                return;
-            }
-
-            // ── 4. DETECT TRANSACTION / REFERENCE NUMBER SENT BY CUSTOMER ──
-            const detectedRef = this.extractReferenceNumber(rawBody);
-
-            if (stateObj?.state === 'awaiting_receipt' || (detectedRef && order)) {
-                const refToSave = detectedRef || rawBody;
-                this.log('receipt', `Customer provided transaction reference: "${refToSave}" for order ${orderNumber}`);
-
-                if (order?.id) {
-                    await db.saveOrderPaymentReference(order.id, refToSave, rawBody);
-                }
-
-                if (stateObj) stateObj.state = 'receipt_received';
-                if (digitsKeyFromReal) this.userStates.set(digitsKeyFromReal, { ...stateObj, state: 'receipt_received' });
-
-                const refReply = 
-`✅ *تم استلام رقم العملية بنجاح!*
-
-📦 طلب رقم: *${orderNumber}*
-🔢 رقم العملية / المرجعي: *${refToSave}*
-⏳ الحالة: *في انتظار مراجعة وتأكيد التحويل من خدمة العملاء.*
-
-🌸 سيصلك إشعار فوري هنا على الواتساب فور اعتماد الدفع وبدء تجهيز شحنتك. شكراً لاختيارك *زين للعطور*! ✨`;
-
-                await this.sendSafeReply(msg, refReply);
-
-                if (this.io) {
-                    this.io.emit('receipt_uploaded', {
-                        orderId: order?.id,
-                        orderNumber,
-                        referenceNumber: refToSave,
-                        rawMessage: rawBody,
-                        type: 'reference_number',
-                        timestamp: new Date().toISOString()
-                    });
-                }
-                return;
-            }
+            // Silent Mode: Absolutely NO automated replies on WhatsApp for incoming customer chats
+            return;
 
         } catch (err) {
             this.log('error', `Error handling message from ${msg.from}: ${err.message}`);
