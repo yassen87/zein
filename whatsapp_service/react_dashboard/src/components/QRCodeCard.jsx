@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { QrCode, RefreshCw, Power, Smartphone, CheckCircle, AlertTriangle } from 'lucide-react';
 
-export default function QRCodeCard({ status, qr, info, onInit, onLogout }) {
+export default function QRCodeCard({ status, qr, info, onInit, onReset, onLogout }) {
   const [loading, setLoading] = useState(false);
 
   const handleAction = async (actionFn) => {
@@ -77,13 +77,16 @@ export default function QRCodeCard({ status, qr, info, onInit, onLogout }) {
             </div>
           ) : isQrReady ? (
             <div className="flex flex-col items-center">
-              <div className="p-4 bg-white rounded-2xl shadow-2xl border-4 border-amber-500/30 mb-4 relative">
+              <div className="p-4 bg-white rounded-2xl shadow-2xl border-4 border-amber-500/30 mb-3 relative">
                 <img src={qr} alt="WhatsApp QR Code" className="w-56 h-56 object-contain" />
               </div>
-              <div className="flex items-center gap-2 text-xs text-amber-300 font-medium">
+              <div className="flex items-center gap-2 text-xs text-amber-300 font-medium mb-2">
                 <Smartphone size={16} />
-                <span>افتح واتساب على هاتفك &gt; الأجهزة المرتبطة &gt; ربط جهاز</span>
+                <span>افتح واتساب &gt; الأجهزة المرتبطة &gt; ربط جهاز &gt; امسح الكود مباشرة</span>
               </div>
+              <p className="text-[11px] text-slate-400 text-center max-w-xs">
+                ⚠️ إذا ظهر لك Try Again على الهاتف: اضغط زر "إعادة تهيئة الجلسة (Hard Reset)" بالأسفل لمسح الكاش وتوليد كود نظيف.
+              </p>
             </div>
           ) : isAuthenticating ? (
             <div className="text-center py-12">
@@ -100,29 +103,60 @@ export default function QRCodeCard({ status, qr, info, onInit, onLogout }) {
               <p className="text-xs text-slate-400 mb-5 max-w-xs mx-auto">
                 اضغط على زر تشغيل البوت لتوليد رمز الاستجابة السريعة (QR Code) وربط رقم واتساب المتجر.
               </p>
-              <button
-                onClick={() => handleAction(onInit)}
-                disabled={loading}
-                className="gold-btn mx-auto"
-              >
-                <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-                تشغيل وتوليد الـ QR Code
-              </button>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <button
+                  onClick={() => handleAction(onInit)}
+                  disabled={loading}
+                  className="gold-btn"
+                >
+                  <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+                  تشغيل وتوليد الـ QR Code
+                </button>
+                {onReset && (
+                  <button
+                    onClick={() => {
+                      if (window.confirm('هل تريد تنظيف أي جلسة سابقة وبدء جلسة جديدة نظيفة؟')) {
+                        handleAction(onReset);
+                      }
+                    }}
+                    disabled={loading}
+                    className="secondary-btn text-xs"
+                  >
+                    🔄 مسح الكاش وبدء جلسة جديدة
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>
       </div>
 
       {/* Action Footer */}
-      <div className="pt-4 border-t border-slate-700/60 flex items-center justify-between gap-3">
-        <button
-          onClick={() => handleAction(onInit)}
-          disabled={loading}
-          className="secondary-btn text-xs"
-        >
-          <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
-          إعادة تشغيل البوت
-        </button>
+      <div className="pt-4 border-t border-slate-700/60 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleAction(onInit)}
+            disabled={loading}
+            className="secondary-btn text-xs"
+          >
+            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+            تحديث / تشغيل
+          </button>
+
+          {onReset && !isConnected && (
+            <button
+              onClick={() => {
+                if (window.confirm('سيتم حذف ملفات الجلسة المؤقتة .wwebjs_auth وتوليد QR جديد نظيف. متابعة؟')) {
+                  handleAction(onReset);
+                }
+              }}
+              disabled={loading}
+              className="px-3 py-2 bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
+            >
+              🔄 إعادة تهيئة الجلسة (Hard Reset)
+            </button>
+          )}
+        </div>
 
         {isConnected && (
           <button

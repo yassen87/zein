@@ -60,12 +60,19 @@ class WhatsAppBot {
         this.status = 'authenticating';
         this.emitStatus();
 
-        // Check for available browser executables on Windows (Edge / Chrome)
+        // Check for available browser executables on Windows and Linux VPS
         const possiblePaths = [
+            // Windows Paths
             'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
             'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
             'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-            'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe'
+            'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+            // Linux VPS Paths (Ubuntu / Debian / CentOS)
+            '/usr/bin/google-chrome-stable',
+            '/usr/bin/google-chrome',
+            '/usr/bin/chromium-browser',
+            '/usr/bin/chromium',
+            '/snap/bin/chromium'
         ];
 
         let executablePath = undefined;
@@ -87,9 +94,12 @@ class WhatsAppBot {
                 '--disable-dev-shm-usage',
                 '--disable-accelerated-2d-canvas',
                 '--no-first-run',
+                '--no-zygote',
                 '--disable-gpu',
-                '--disable-extensions'
-            ]
+                '--disable-extensions',
+                '--disable-blink-features=AutomationControlled'
+            ],
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
         };
 
         if (executablePath) {
@@ -102,7 +112,7 @@ class WhatsAppBot {
             }),
             webVersionCache: {
                 type: 'remote',
-                remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1018919694-alpha.html'
+                remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/{version}.html'
             },
             puppeteer: puppeteerOptions
         });
@@ -777,8 +787,8 @@ ${productUrl}
     async logout() {
         if (this.client) {
             try {
-                await this.client.logout();
-                await this.client.destroy();
+                await this.client.logout().catch(() => {});
+                await this.client.destroy().catch(() => {});
             } catch (err) {
                 console.error('Error during client logout:', err.message);
             }
@@ -789,6 +799,42 @@ ${productUrl}
             this.emitStatus();
             this.log('info', 'Logged out and cleared WhatsApp session.');
         }
+    }
+
+    /**
+     * Clean Hard Reset: destroy client and completely wipe auth & cache folders
+     */
+    async resetSession() {
+        this.log('warn', 'Performing Hard Reset of WhatsApp session & auth files...');
+        if (this.client) {
+            try {
+                await this.client.logout().catch(() => {});
+                await this.client.destroy().catch(() => {});
+            } catch (err) {
+                console.error('Error during client destroy:', err.message);
+            }
+            this.client = null;
+        }
+
+        const authDir = path.join(__dirname, '.wwebjs_auth');
+        const cacheDir = path.join(__dirname, '.wwebjs_cache');
+
+        try {
+            if (fs.existsSync(authDir)) {
+                fs.rmSync(authDir, { recursive: true, force: true });
+            }
+            if (fs.existsSync(cacheDir)) {
+                fs.rmSync(cacheDir, { recursive: true, force: true });
+            }
+            this.log('info', 'Cleaned .wwebjs_auth and .wwebjs_cache successfully.');
+        } catch (err) {
+            this.log('error', `Failed to remove auth directory: ${err.message}`);
+        }
+
+        this.status = 'disconnected';
+        this.clientInfo = null;
+        this.qrCodeDataUrl = null;
+        this.emitStatus();
     }
 }
 

@@ -114,6 +114,21 @@ app.post('/api/logout', async (req, res) => {
 });
 
 /**
+ * POST /api/reset - Hard reset session, wipe corrupted auth & restart client
+ */
+app.post('/api/reset', async (req, res) => {
+    try {
+        await bot.resetSession();
+        setTimeout(() => {
+            bot.initialize();
+        }, 1200);
+        res.json({ success: true, message: 'Session reset and restarted successfully. Scan the fresh QR code.' });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+/**
  * POST /api/send-order - Send 1-2-3 Order Menu to customer
  */
 app.post('/api/send-order', async (req, res) => {

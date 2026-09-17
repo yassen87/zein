@@ -91,6 +91,10 @@ export default function App() {
     await fetch('/api/init', { method: 'POST' });
   };
 
+  const handleReset = async () => {
+    await fetch('/api/reset', { method: 'POST' });
+  };
+
   const handleLogout = async () => {
     await fetch('/api/logout', { method: 'POST' });
   };
@@ -248,6 +252,7 @@ export default function App() {
                   qr={qr}
                   info={clientInfo}
                   onInit={handleInit}
+                  onReset={handleReset}
                   onLogout={handleLogout}
                 />
               </div>

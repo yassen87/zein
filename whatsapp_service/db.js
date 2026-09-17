@@ -8,11 +8,26 @@ const fs = require('fs');
 let pool = null;
 
 function getDbConfig() {
-    let host = '127.0.0.1';
-    let user = 'zein';
-    let password = 'P@ssw0rd123!';
-    let database = 'medal_db';
-    let port = 3306;
+    let host = process.env.DB_HOST || '127.0.0.1';
+    let user = process.env.DB_USER || 'zein';
+    let password = process.env.DB_PASS || process.env.DB_PASSWORD || 'P@ssw0rd123!';
+    let database = process.env.DB_NAME || 'medal_db';
+    let port = parseInt(process.env.DB_PORT || '3306', 10);
+
+    // If explicit env variables are set, use them directly
+    if (process.env.DB_HOST && process.env.DB_NAME) {
+        return {
+            host,
+            user,
+            password,
+            database,
+            port,
+            waitForConnections: true,
+            connectionLimit: 10,
+            queueLimit: 0,
+            charset: 'utf8mb4'
+        };
+    }
 
     const filesToTry = [
         path.join(__dirname, '..', 'includes', 'db.local.php'),
